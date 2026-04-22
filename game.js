@@ -12,42 +12,38 @@ const levelUploadInput = document.getElementById("levelUpload");
 const WORLD_WIDTH = 800;
 const WORLD_HEIGHT = 600;
 
-        let currentLevel = 1;
-        let lives = 3;
-        let gameActive = true;
-        let playerX = 50;
-        let playerY = 450;
-        let playerVelY = 0;
-        let playerVelX = 0;
-        let isJumping = false;
-        let maxLevels = 20;
-        let gameStarted = false;
-        let customLevel= null;
-
-        // Player hitbox
-        let PLAYER_HITBOX_WIDTH = 30;
-        let PLAYER_HITBOX_HEIGHT = 24;
-
-        // Enemy default hitbox
-        let ENEMY_HITBOX_WIDTH = 34;
-        let ENEMY_HITBOX_HEIGHT = 30;
-
-        // Spike default hitbox
-        let SPIKE_HITBOX_WIDTH = 40;
-        let SPIKE_HITBOX_HEIGHT = 37;
-
-        // Goal default hitbox
-        let GOAL_HITBOX_WIDTH = 42;
-        let GOAL_HITBOX_HEIGHT = 41;
-
+const PLAYER_HITBOX_WIDTH = 30;
+const PLAYER_HITBOX_HEIGHT = 24;
+const ENEMY_HITBOX_WIDTH = 34;
+const ENEMY_HITBOX_HEIGHT = 30;
+const SPIKE_HITBOX_WIDTH = 40;
+const SPIKE_HITBOX_HEIGHT = 37;
+const GOAL_HITBOX_WIDTH = 42;
+const GOAL_HITBOX_HEIGHT = 41;
 
 const GRAVITY = 0.6;
 const JUMP_STRENGTH = -12;
 const MOVE_SPEED = 5;
 const JUMP_CUTOFF_MULTIPLIER = 0.45;
-
 const COYOTE_FRAMES = 8;
 const JUMP_BUFFER_FRAMES = 8;
+
+let currentLevel = 1;
+let lives = 3;
+let gameActive = true;
+let gameStarted = false;
+let paused = false;
+let invincible = false;
+
+let playerX = 50;
+let playerY = 450;
+let playerVelY = 0;
+let playerVelX = 0;
+
+let maxLevels = Array.isArray(levels) ? levels.length : 20;
+let loadedCustomLevelCount = 0;
+let musicVolume = 0.6;
+let sfxVolume = 0.8;
 let coyoteTimer = 0;
 let jumpBufferTimer = 0;
 let wasJumpHeld = false;
@@ -124,16 +120,16 @@ function clearWorldObjects() {
 function normalizeRuntimeLevels() {
     if (!window.LevelSchema) return;
 
-    for (let i = 0; i < levels.length; i++) {
-        levels[i] = window.LevelSchema.normalizeLevel(levels[i]);
+    for (let index = 0; index < levels.length; index += 1) {
+        levels[index] = window.LevelSchema.normalizeLevel(levels[index]);
     }
 }
 
 function findSpikeAnchorY(spikeX) {
     let anchorY = null;
 
-    for (let i = 0; i < platformEls.length; i++) {
-        const plat = platformEls[i];
+    for (let index = 0; index < platformEls.length; index += 1) {
+        const plat = platformEls[index];
         const px = Number(plat.style.left.replace("px", ""));
         const py = Number(plat.style.top.replace("px", ""));
         const pw = Number(plat.dataset.hitboxWidth);
@@ -156,74 +152,47 @@ function loadLevel(levelNum) {
     const rawLevel = levels[levelNum - 1];
     const level = window.LevelSchema ? window.LevelSchema.normalizeLevel(rawLevel) : rawLevel;
 
-    level.platforms.forEach((p) => {
+    level.platforms.forEach((platform) => {
         const platformEl = document.createElement("div");
         platformEl.className = "platform";
-        platformEl.style.left = `${p.x}px`;
-        platformEl.style.top = `${p.y}px`;
-        platformEl.style.width = `${p.w}px`;
-        platformEl.style.height = `${p.h}px`;
-        platformEl.dataset.hitboxWidth = String(p.w);
-        platformEl.dataset.hitboxHeight = String(p.h);
+        platformEl.style.left = `${platform.x}px`;
+        platformEl.style.top = `${platform.y}px`;
+        platformEl.style.width = `${platform.w}px`;
+        platformEl.style.height = `${platform.h}px`;
+        platformEl.dataset.hitboxWidth = String(platform.w);
+        platformEl.dataset.hitboxHeight = String(platform.h);
         platformEls.push(platformEl);
         gameContainer.appendChild(platformEl);
     });
 
-    level.enemies.forEach((e) => {
+    level.enemies.forEach((enemy) => {
         const enemyEl = document.createElement("div");
         enemyEl.className = "enemy";
-        enemyEl.style.left = `${e.x}px`;
-        enemyEl.style.top = `${e.y}px`;
-        enemyEl.dataset.minx = String(e.minX);
-        enemyEl.dataset.maxx = String(e.maxX);
+        enemyEl.style.left = `${enemy.x}px`;
+        enemyEl.style.top = `${enemy.y}px`;
+        enemyEl.dataset.minx = String(enemy.minX);
+        enemyEl.dataset.maxx = String(enemy.maxX);
         enemyEl.dataset.vx = "2";
-        enemyEl.dataset.hitboxWidth = String(e.hitboxW || ENEMY_HITBOX_WIDTH);
-        enemyEl.dataset.hitboxHeight = String(e.hitboxH || ENEMY_HITBOX_HEIGHT);
+        enemyEl.dataset.hitboxWidth = String(enemy.hitboxW || ENEMY_HITBOX_WIDTH);
+        enemyEl.dataset.hitboxHeight = String(enemy.hitboxH || ENEMY_HITBOX_HEIGHT);
         enemyEls.push(enemyEl);
         gameContainer.appendChild(enemyEl);
     });
 
-            /* SHELLERS
-            level.shellers?.forEach(s => {
-                const sheller = document.createElement('div');
-                sheller.className = 'sheller';
-                sheller.style.left = s.x + 'px';
-                sheller.style.top = s.y + 'px';
-                sheller.dataset.dir = s.dir || 1;
-                sheller.dataset.cooldown = 0;
-                gameContainer.appendChild(sheller);
-            }); */
+    level.spikes.forEach((spike) => {
+        const spikeEl = document.createElement("div");
+        spikeEl.className = "spike";
+        spikeEl.style.left = `${spike.x}px`;
 
+        const anchorY = findSpikeAnchorY(spike.x);
+        if (anchorY !== null) {
+            spikeEl.style.top = `${anchorY - SPIKE_HITBOX_HEIGHT}px`;
+        } else {
+            spikeEl.style.top = `${spike.y}px`;
+        }
 
-            // SPIKES
-            level.spikes.forEach(s => {
-                const spikeEl = document.createElement('div');
-                spikeEl.className = 'spike';
-                spikeEl.style.left = s.x + 'px';
-
-                // find the platform below this spike
-                let platformBelow = null;
-                document.querySelectorAll('.platform').forEach(plat => {
-                    const px = parseFloat(plat.style.left);
-                    const pwPlat = parseFloat(plat.dataset.hitboxWidth);
-                    const py = parseFloat(plat.style.top);
-                    if (s.x + SPIKE_HITBOX_WIDTH > px && s.x < px + pwPlat) {
-                        if (!platformBelow || py < platformBelow.y) {
-                            platformBelow = { y: py };
-                        }
-                    }
-                });
-
-                if (platformBelow) {
-                    // anchor spike on top of platform
-                    spikeEl.style.top = (platformBelow.y - SPIKE_HITBOX_HEIGHT) + 'px';
-                } else {
-                    // fallback if no platform found
-                    spikeEl.style.top = s.y + 'px';
-                }
-
-        spikeEl.dataset.hitboxWidth = String(s.hitboxW || SPIKE_HITBOX_WIDTH);
-        spikeEl.dataset.hitboxHeight = String(s.hitboxH || SPIKE_HITBOX_HEIGHT);
+        spikeEl.dataset.hitboxWidth = String(spike.hitboxW || SPIKE_HITBOX_WIDTH);
+        spikeEl.dataset.hitboxHeight = String(spike.hitboxH || SPIKE_HITBOX_HEIGHT);
         spikeEls.push(spikeEl);
         gameContainer.appendChild(spikeEl);
     });
@@ -238,8 +207,8 @@ function loadLevel(levelNum) {
 
     playerX = 50;
     playerY = 450;
-    playerVelY = 0;
     playerVelX = 0;
+    playerVelY = 0;
     coyoteTimer = 0;
     jumpBufferTimer = 0;
     player.dataset.hitboxWidth = String(PLAYER_HITBOX_WIDTH);
@@ -253,8 +222,8 @@ function updatePlayerPosition() {
 }
 
 function updateEnemies() {
-    for (let i = 0; i < enemyEls.length; i++) {
-        const enemy = enemyEls[i];
+    for (let index = 0; index < enemyEls.length; index += 1) {
+        const enemy = enemyEls[index];
         let x = Number(enemy.style.left.replace("px", ""));
         const minX = Number(enemy.dataset.minx);
         const maxX = Number(enemy.dataset.maxx);
@@ -279,8 +248,8 @@ function checkCollisions() {
     const pw = getPlayerWidth();
     const ph = getPlayerHeight();
 
-    for (let i = 0; i < platformEls.length; i++) {
-        const platform = platformEls[i];
+    for (let index = 0; index < platformEls.length; index += 1) {
+        const platform = platformEls[index];
         const px = Number(platform.style.left.replace("px", ""));
         const py = Number(platform.style.top.replace("px", ""));
         const pWidth = Number(platform.dataset.hitboxWidth);
@@ -296,8 +265,8 @@ function checkCollisions() {
     }
 
     if (!invincible) {
-        for (let i = 0; i < enemyEls.length && !hitHazard; i++) {
-            const enemy = enemyEls[i];
+        for (let index = 0; index < enemyEls.length && !hitHazard; index += 1) {
+            const enemy = enemyEls[index];
             const ex = Number(enemy.style.left.replace("px", ""));
             const ey = Number(enemy.style.top.replace("px", ""));
             const ew = Number(enemy.dataset.hitboxWidth);
@@ -308,8 +277,8 @@ function checkCollisions() {
             }
         }
 
-        for (let i = 0; i < spikeEls.length && !hitHazard; i++) {
-            const spike = spikeEls[i];
+        for (let index = 0; index < spikeEls.length && !hitHazard; index += 1) {
+            const spike = spikeEls[index];
             const sx = Number(spike.style.left.replace("px", ""));
             const sy = Number(spike.style.top.replace("px", ""));
             const sw = Number(spike.dataset.hitboxWidth);
@@ -349,88 +318,237 @@ function playerDeath() {
     }
 }
 
-        function levelComplete() {
-            if (currentLevel < maxLevels) {
-                currentLevel++;
-                loadLevel(currentLevel);
-                player.classList.add('fade-in');
-            } else {
-                gameActive = false;
-                showGameOver('You Won!', 'Congratulations! You completed all 20 levels!');
+function levelComplete() {
+    if (currentLevel < maxLevels) {
+        currentLevel += 1;
+        loadLevel(currentLevel);
+        player.classList.add("fade-in");
+        setTimeout(() => player.classList.remove("fade-in"), 500);
+    } else {
+        gameActive = false;
+        showGameOver("You Won!", "Congratulations! You completed all levels!");
+    }
+}
+
+function updatePlayerAnimation(isOnGround) {
+    const movingLeft = playerVelX < 0;
+    const movingRight = playerVelX > 0;
+    const jumping = playerVelY < 0;
+    const falling = playerVelY > 0 && !isOnGround;
+
+    if (jumping || falling) {
+        player.style.backgroundImage = 'url("assets/player_jump.gif")';
+    } else if (movingLeft) {
+        player.style.backgroundImage = 'url("assets/player_left.gif")';
+    } else if (movingRight) {
+        player.style.backgroundImage = 'url("assets/player_right.gif")';
+    } else {
+        player.style.backgroundImage = 'url("assets/player_idle.gif")';
+    }
+}
+
+function showGameOver(title, text) {
+    document.getElementById("gameOverTitle").textContent = title;
+    document.getElementById("gameOverText").textContent = text;
+    gameOverDiv.style.display = "block";
+    setPaused(false);
+}
+
+function hideGameOver() {
+    gameOverDiv.style.display = "none";
+}
+
+function setPaused(nextPaused) {
+    paused = Boolean(nextPaused);
+    if (!gameStarted || !gameActive) {
+        paused = false;
+    }
+    pauseOverlay.style.display = paused ? "flex" : "none";
+}
+
+function toggleSettingsPanel(forceOpen) {
+    const currentlyOpen = settingsPanel.style.display === "flex";
+    const shouldOpen = typeof forceOpen === "boolean" ? forceOpen : !currentlyOpen;
+    settingsPanel.style.display = shouldOpen ? "flex" : "none";
+}
+
+function updateSettingsText() {
+    document.getElementById("musicValue").textContent = `${Math.round(musicVolume * 100)}%`;
+    document.getElementById("sfxValue").textContent = `${Math.round(sfxVolume * 100)}%`;
+}
+
+function canUseJumpThisFrame() {
+    return coyoteTimer > 0 && jumpBufferTimer > 0;
+}
+
+function readAndAppendCustomLevels(file) {
+    const reader = new FileReader();
+    reader.onload = () => {
+        try {
+            const parsed = JSON.parse(String(reader.result));
+            const maybeList = Array.isArray(parsed) ? parsed : [parsed];
+
+            if (!window.LevelSchema) {
+                throw new Error("Level schema utilities are not loaded.");
             }
-        }
 
-        /* GET DOWN MR PRESIDENT
-        function updateShellers() {
-            document.querySelectorAll('.sheller').forEach(sheller => {
-                let cooldown = Number(sheller.dataset.cooldown);
-                cooldown--;
-
-                if (cooldown <= 0) {
-                    fireShell(sheller);
-                    cooldown = 120; // frames between shots (~2s at 60fps)
+            const normalized = [];
+            for (let index = 0; index < maybeList.length; index += 1) {
+                const validation = window.LevelSchema.validateLevel(maybeList[index]);
+                if (!validation.valid) {
+                    throw new Error(`Custom level ${index + 1} is invalid: ${validation.errors.join("; ")}`);
                 }
-
-                sheller.dataset.cooldown = cooldown;
-            });
-        }
-        
-        function fireShell(sheller) {
-            const shell = document.createElement('div');
-            shell.className = 'shell';
-
-            const x = parseFloat(sheller.style.left) + 18;
-            const y = parseFloat(sheller.style.top) + 18;
-
-            shell.style.left = x + 'px';
-            shell.style.top = y + 'px';
-            shell.dataset.vx = 4 * Number(sheller.dataset.dir);
-
-            gameContainer.appendChild(shell);
-        }
-        
-        function updateShells() {
-            document.querySelectorAll('.shell').forEach(shell => {
-                let x = parseFloat(shell.style.left);
-                const vx = Number(shell.dataset.vx);
-
-                x += vx;
-                shell.style.left = x + 'px';
-
-                // collision with player
-                const sw = 10, sh = 10;
-                const pw = PLAYER_HITBOX_WIDTH, ph = PLAYER_HITBOX_HEIGHT;
-
-                if (isColliding(x, parseFloat(shell.style.top), sw, sh,
-                                playerX, playerY, pw, ph)) {
-                    shell.remove();
-                    playerDeath();
-                }
-
-                // cleanup offscreen
-                if (x < -20 || x > 820) shell.remove();
-            });
-        }
-        */
-        
-        const devMenu = document.getElementById('devMenu');
-        let invincible = false;
-
-        const konamiCode = ['ArrowUp','ArrowUp','ArrowDown','ArrowDown','ArrowLeft','ArrowRight','ArrowLeft','ArrowRight','b','a'];
-        let konamiIndex = 0;
-
-        window.addEventListener('keydown', (e) => {
-            if(e.key === konamiCode[konamiIndex]) {
-                konamiIndex++;
-                if(konamiIndex === konamiCode.length) {
-                    devMenu.style.display = 'block';
-                    console.log('Dev Menu Activated!');
-                    konamiIndex = 0;
-                }
-            } else {
-                konamiIndex = 0;
+                normalized.push(window.LevelSchema.normalizeLevel(maybeList[index]));
             }
-        });
+
+            normalized.forEach((level) => levels.push(level));
+            loadedCustomLevelCount = normalized.length;
+            syncMaxLevelUI();
+            alert(`Loaded ${normalized.length} custom level(s). Use the Custom Levels button to play them.`);
+        } catch (error) {
+            alert(`Invalid custom level file: ${error.message}`);
+        }
+    };
+    reader.readAsText(file);
+}
+
+function startNewRun(startLevel) {
+    hideGameOver();
+    gameStarted = true;
+    gameActive = true;
+    setPaused(false);
+    toggleSettingsPanel(false);
+    mainMenu.style.display = "none";
+    lives = 3;
+    uiLives.textContent = String(lives);
+    loadLevel(startLevel);
+}
+
+function bindTouchControls() {
+    document.querySelectorAll("[data-touch-key]").forEach((button) => {
+        const key = button.getAttribute("data-touch-key");
+        if (!key) return;
+
+        const down = (event) => {
+            event.preventDefault();
+            setTouchKey(key, true);
+        };
+
+        const up = (event) => {
+            event.preventDefault();
+            setTouchKey(key, false);
+        };
+
+        button.addEventListener("pointerdown", down);
+        button.addEventListener("pointerup", up);
+        button.addEventListener("pointercancel", up);
+        button.addEventListener("pointerleave", up);
+    });
+}
+
+function bindUI() {
+    document.getElementById("skipLevelBtn").addEventListener("click", () => {
+        if (currentLevel < maxLevels) {
+            loadLevel(currentLevel + 1);
+        }
+    });
+
+    document.getElementById("addLifeBtn").addEventListener("click", () => {
+        lives += 1;
+        uiLives.textContent = String(lives);
+    });
+
+    document.getElementById("toggleInvincibleBtn").addEventListener("click", () => {
+        invincible = !invincible;
+        player.style.outline = invincible ? "2px solid #4CD1FF" : "none";
+    });
+
+    document.getElementById("startGameBtn").addEventListener("click", () => {
+        startNewRun(1);
+    });
+
+    document.getElementById("customLevelBtn").addEventListener("click", () => {
+        if (!levelUploadInput.files || levelUploadInput.files.length === 0) {
+            alert("Choose a .json file first.");
+            return;
+        }
+
+        if (loadedCustomLevelCount === 0) {
+            readAndAppendCustomLevels(levelUploadInput.files[0]);
+            return;
+        }
+
+        const customStart = maxLevels - loadedCustomLevelCount + 1;
+        startNewRun(customStart);
+    });
+
+    levelUploadInput.addEventListener("change", () => {
+        loadedCustomLevelCount = 0;
+    });
+
+    document.getElementById("restartBtn").addEventListener("click", () => {
+        startNewRun(1);
+    });
+
+    document.getElementById("pauseRestartBtn").addEventListener("click", () => {
+        startNewRun(1);
+    });
+
+    document.getElementById("pauseBtn").addEventListener("click", () => {
+        if (gameStarted && gameActive) {
+            setPaused(!paused);
+        }
+    });
+
+    document.getElementById("resumeBtn").addEventListener("click", () => {
+        setPaused(false);
+    });
+
+    document.getElementById("settingsBtn").addEventListener("click", () => {
+        toggleSettingsPanel();
+    });
+
+    document.getElementById("closeSettingsBtn").addEventListener("click", () => {
+        toggleSettingsPanel(false);
+    });
+
+    document.getElementById("musicSlider").addEventListener("input", (event) => {
+        musicVolume = Number(event.target.value) / 100;
+        updateSettingsText();
+    });
+
+    document.getElementById("sfxSlider").addEventListener("input", (event) => {
+        sfxVolume = Number(event.target.value) / 100;
+        updateSettingsText();
+    });
+
+    bindTouchControls();
+    updateSettingsText();
+}
+
+window.addEventListener("keydown", (event) => {
+    keys[event.key] = true;
+
+    if (event.key === " ") {
+        event.preventDefault();
+    }
+
+    if (event.key === "Escape" || event.key.toLowerCase() === "p") {
+        if (gameStarted && gameActive) {
+            setPaused(!paused);
+        }
+    }
+
+    if (event.key === konamiCode[konamiIndex]) {
+        konamiIndex += 1;
+        if (konamiIndex === konamiCode.length) {
+            devMenu.style.display = "block";
+            konamiIndex = 0;
+        }
+    } else {
+        konamiIndex = 0;
+    }
+});
 
 window.addEventListener("keyup", (event) => {
     keys[event.key] = false;
@@ -488,14 +606,20 @@ function update() {
         jumpBufferTimer = 0;
     }
 
-            // GET DOWN MR PRESIDENT
-            //updateShellers();
-            //updateShells();
+    if (collision.hitHazard) {
+        playerDeath();
+        return;
+    }
 
+    if (collision.hitGoal) {
+        levelComplete();
+        return;
+    }
 
-            updateEnemies();
-            updatePlayerPosition();
-        }
+    updateEnemies();
+    updatePlayerPosition();
+    updatePlayerAnimation(collision.isOnGround);
+}
 
 function gameLoop() {
     update();
