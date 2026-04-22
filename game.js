@@ -75,6 +75,10 @@ let konamiIndex = 0;
 function fitGameToViewport() {
     const scale = Math.min(window.innerWidth / WORLD_WIDTH, window.innerHeight / WORLD_HEIGHT);
     document.documentElement.style.setProperty("--game-scale", String(Math.max(0.45, scale)));
+    
+    // Initialize camera variables
+    gameContainer.style.setProperty("--camera-x", "0px");
+    gameContainer.style.setProperty("--camera-y", "0px");
 }
 
 function syncMaxLevelUI() {
@@ -108,6 +112,28 @@ function syncScenePresentation() {
     gameContainer.style.setProperty("--backdrop-shift", `${playerX * -0.08}px`);
     gameContainer.style.setProperty("--stage-hue", String(stageHue));
     gameContainer.style.setProperty("--accent-hue", String(accentHue));
+
+    // Calculate camera position for smaller resolutions
+    const scale = Number(document.documentElement.style.getPropertyValue("--game-scale") || 1);
+    const viewportWidth = Math.min(window.innerWidth - 48, 800); // 48px for padding
+    const viewportHeight = Math.min(window.innerHeight - 48, 600);
+    
+    // Only apply camera movement if viewport is smaller than world
+    if (viewportWidth < WORLD_WIDTH || viewportHeight < WORLD_HEIGHT) {
+        // Center camera on player
+        let cameraX = centerX - viewportWidth / (2 * scale);
+        let cameraY = centerY - viewportHeight / (2 * scale);
+        
+        // Constrain camera to world boundaries
+        cameraX = Math.max(0, Math.min(cameraX, WORLD_WIDTH - viewportWidth / scale));
+        cameraY = Math.max(0, Math.min(cameraY, WORLD_HEIGHT - viewportHeight / scale));
+        
+        gameContainer.style.setProperty("--camera-x", `${-cameraX}px`);
+        gameContainer.style.setProperty("--camera-y", `${-cameraY}px`);
+    } else {
+        gameContainer.style.setProperty("--camera-x", "0px");
+        gameContainer.style.setProperty("--camera-y", "0px");
+    }
 
     if (levelFill) {
         const progress = maxLevels > 0 ? Math.max(0.04, currentLevel / maxLevels) : 0.04;
@@ -311,10 +337,10 @@ function updateShellshots() {
 
         if (playerX < shellshotX - 50) {
             velocityX = 2;
-            direction = 1;
+            direction = -1;
         } else if (playerX > shellshotX + 50) {
             velocityX = -2;
-            direction = -1;
+            direction = 1;
         } else {
             velocityX = 0;
         }
@@ -326,6 +352,7 @@ function updateShellshots() {
 
         shellshot.dataset.vx = String(velocityX);
         shellshot.dataset.dir = String(direction);
+        shellshot.style.transform = `scaleX(${direction})`;
 
         let cooldown = Number(shellshot.dataset.cooldown) - 1;
         if (cooldown <= 0) {
@@ -346,7 +373,10 @@ function fireShellshotProjectile(shellshot) {
 
     shell.style.left = `${x}px`;
     shell.style.top = `${y}px`;
-    shell.dataset.vx = String(5 * Number(shellshot.dataset.dir));
+    
+    const shellshotX = Number(shellshot.style.left.replace("px", ""));
+    const shootDir = playerX < shellshotX ? -1 : 1;
+    shell.dataset.vx = String(5 * shootDir);
     shellshotShellEls.push(shell);
     gameContainer.appendChild(shell);
 }
@@ -417,17 +447,7 @@ function checkCollisions() {
             }
         }
 
-        for (let index = 0; index < shellshotEls.length && !hitHazard; index += 1) {
-            const shellshot = shellshotEls[index];
-            const sx = Number(shellshot.style.left.replace("px", ""));
-            const sy = Number(shellshot.style.top.replace("px", ""));
-            const sw = Number(shellshot.dataset.hitboxWidth);
-            const sh = Number(shellshot.dataset.hitboxHeight);
 
-            if (isColliding(playerX, playerY, pw, ph, sx, sy, sw, sh)) {
-                hitHazard = true;
-            }
-        }
 
         for (let index = 0; index < spikeEls.length && !hitHazard; index += 1) {
             const spike = spikeEls[index];
