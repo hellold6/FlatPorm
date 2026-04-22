@@ -1,5 +1,4 @@
 const gameContainer = document.getElementById("gameContainer");
-const gameWorld = document.getElementById("gameWorld");
 const player = document.getElementById("player");
 const playerShadow = document.getElementById("playerShadow");
 const uiLevel = document.getElementById("levelNum");
@@ -76,10 +75,6 @@ let konamiIndex = 0;
 function fitGameToViewport() {
     const scale = Math.min(window.innerWidth / WORLD_WIDTH, window.innerHeight / WORLD_HEIGHT);
     document.documentElement.style.setProperty("--game-scale", String(Math.max(0.45, scale)));
-    
-    // Initialize camera variables
-    gameContainer.style.setProperty("--camera-x", "0px");
-    gameContainer.style.setProperty("--camera-y", "0px");
 }
 
 function syncMaxLevelUI() {
@@ -113,28 +108,6 @@ function syncScenePresentation() {
     gameContainer.style.setProperty("--backdrop-shift", `${playerX * -0.08}px`);
     gameContainer.style.setProperty("--stage-hue", String(stageHue));
     gameContainer.style.setProperty("--accent-hue", String(accentHue));
-
-    // Calculate camera position for smaller resolutions
-    const scale = Number(document.documentElement.style.getPropertyValue("--game-scale") || 1);
-    const viewportWidth = Math.min(window.innerWidth - 48, 800); // 48px for padding
-    const viewportHeight = Math.min(window.innerHeight - 48, 600);
-    
-    // Only apply camera movement if viewport is smaller than world
-    if (viewportWidth < WORLD_WIDTH || viewportHeight < WORLD_HEIGHT) {
-        // Center camera on player
-        let cameraX = centerX - viewportWidth / (2 * scale);
-        let cameraY = centerY - viewportHeight / (2 * scale);
-        
-        // Constrain camera to world boundaries
-        cameraX = Math.max(0, Math.min(cameraX, WORLD_WIDTH - viewportWidth / scale));
-        cameraY = Math.max(0, Math.min(cameraY, WORLD_HEIGHT - viewportHeight / scale));
-        
-        gameContainer.style.setProperty("--camera-x", `${-cameraX}px`);
-        gameContainer.style.setProperty("--camera-y", `${-cameraY}px`);
-    } else {
-        gameContainer.style.setProperty("--camera-x", "0px");
-        gameContainer.style.setProperty("--camera-y", "0px");
-    }
 
     if (levelFill) {
         const progress = maxLevels > 0 ? Math.max(0.04, currentLevel / maxLevels) : 0.04;
@@ -178,7 +151,7 @@ function isJumpPressed() {
 }
 
 function clearWorldObjects() {
-    gameWorld.querySelectorAll(".platform, .enemy, .spike, .goal, .shellshot, .shellshot-shell").forEach((el) => el.remove());
+    gameContainer.querySelectorAll(".platform, .enemy, .spike, .goal, .shellshot, .shellshot-shell").forEach((el) => el.remove());
     platformEls = [];
     enemyEls = [];
     spikeEls = [];
@@ -232,7 +205,7 @@ function loadLevel(levelNum) {
         platformEl.dataset.hitboxWidth = String(platform.w);
         platformEl.dataset.hitboxHeight = String(platform.h);
         platformEls.push(platformEl);
-        gameWorld.appendChild(platformEl);
+        gameContainer.appendChild(platformEl);
     });
 
     level.enemies.forEach((enemy) => {
@@ -246,7 +219,7 @@ function loadLevel(levelNum) {
         enemyEl.dataset.hitboxWidth = String(enemy.hitboxW || ENEMY_HITBOX_WIDTH);
         enemyEl.dataset.hitboxHeight = String(enemy.hitboxH || ENEMY_HITBOX_HEIGHT);
         enemyEls.push(enemyEl);
-        gameWorld.appendChild(enemyEl);
+        gameContainer.appendChild(enemyEl);
     });
 
     level.shellshots?.forEach((shellshot) => {
@@ -262,7 +235,7 @@ function loadLevel(levelNum) {
         shellshotEl.dataset.hitboxWidth = String(shellshot.hitboxW || SHELLSHOT_HITBOX_WIDTH);
         shellshotEl.dataset.hitboxHeight = String(shellshot.hitboxH || SHELLSHOT_HITBOX_HEIGHT);
         shellshotEls.push(shellshotEl);
-        gameWorld.appendChild(shellshotEl);
+        gameContainer.appendChild(shellshotEl);
     });
 
     level.spikes.forEach((spike) => {
@@ -280,7 +253,7 @@ function loadLevel(levelNum) {
         spikeEl.dataset.hitboxWidth = String(spike.hitboxW || SPIKE_HITBOX_WIDTH);
         spikeEl.dataset.hitboxHeight = String(spike.hitboxH || SPIKE_HITBOX_HEIGHT);
         spikeEls.push(spikeEl);
-        gameWorld.appendChild(spikeEl);
+        gameContainer.appendChild(spikeEl);
     });
 
     goalEl = document.createElement("div");
@@ -289,7 +262,7 @@ function loadLevel(levelNum) {
     goalEl.style.top = `${level.goalY}px`;
     goalEl.dataset.hitboxWidth = String(level.goalW || GOAL_HITBOX_WIDTH);
     goalEl.dataset.hitboxHeight = String(level.goalH || GOAL_HITBOX_HEIGHT);
-    gameWorld.appendChild(goalEl);
+    gameContainer.appendChild(goalEl);
 
     playerX = 50;
     playerY = 450;
@@ -379,7 +352,7 @@ function fireShellshotProjectile(shellshot) {
     const shootDir = playerX < shellshotX ? -1 : 1;
     shell.dataset.vx = String(5 * shootDir);
     shellshotShellEls.push(shell);
-    gameWorld.appendChild(shell);
+    gameContainer.appendChild(shell);
 }
 
 function updateShellshotProjectiles() {
