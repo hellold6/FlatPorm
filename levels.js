@@ -9,9 +9,6 @@ const levels = [
         ],
         enemies: [],
         spikes: [],
-        shellers: [
-            { x: 400, y: 500, dir: -1 },
-        ],
         goalX: 700,
         goalY: 350
     },
@@ -442,6 +439,159 @@ const levels = [
             {x: 700, y: 260}
         ],
         goalX: 740,
+        goalY: 60
+    },
+
+    // Level 21 - Introduction to Shellshots
+    {
+        platforms: [
+            {x: 0, y: 550, w: 800, h: 50},
+            {x: 80, y: 480, w: 120, h: 20},
+            {x: 280, y: 440, w: 120, h: 20},
+            {x: 480, y: 400, w: 120, h: 20},
+            {x: 680, y: 360, w: 100, h: 20},
+            {x: 200, y: 320, w: 100, h: 20},
+            {x: 500, y: 280, w: 100, h: 20},
+            {x: 350, y: 180, w: 100, h: 20}
+        ],
+        enemies: [],
+        shellshots: [
+            {x: 330, y: 400, dir: 1, scamperMinX: 280, scamperMaxX: 400},
+            {x: 630, y: 320, dir: -1, scamperMinX: 550, scamperMaxX: 700}
+        ],
+        spikes: [
+            {x: 250, y: 300},
+            {x: 550, y: 260}
+        ],
+        goalX: 400,
+        goalY: 120
+    },
+
+    // Level 22 - Shellshots and Shellers
+    {
+        platforms: [
+            {x: 0, y: 550, w: 800, h: 50},
+            {x: 60, y: 480, w: 100, h: 20},
+            {x: 200, y: 430, w: 100, h: 20},
+            {x: 340, y: 380, w: 100, h: 20},
+            {x: 480, y: 330, w: 100, h: 20},
+            {x: 620, y: 280, w: 100, h: 20},
+            {x: 150, y: 300, w: 80, h: 20},
+            {x: 420, y: 260, w: 80, h: 20},
+            {x: 700, y: 150, w: 80, h: 20}
+        ],
+        enemies: [],
+        shellshots: [
+            {x: 550, y: 290, dir: -1, scamperMinX: 480, scamperMaxX: 620}
+        ],
+        spikes: [
+            {x: 180, y: 410},
+            {x: 360, y: 360},
+            {x: 500, y: 310}
+        ],
+        goalX: 740,
+        goalY: 90
+    },
+
+    // Level 23 - Narrow Platforms and Multiple Threats
+    {
+        platforms: [
+            {x: 0, y: 550, w: 800, h: 50},
+            {x: 50, y: 470, w: 70, h: 20},
+            {x: 150, y: 420, w: 70, h: 20},
+            {x: 250, y: 370, w: 70, h: 20},
+            {x: 350, y: 320, w: 70, h: 20},
+            {x: 450, y: 270, w: 70, h: 20},
+            {x: 550, y: 220, w: 70, h: 20},
+            {x: 650, y: 170, w: 70, h: 20},
+            {x: 200, y: 280, w: 60, h: 20},
+            {x: 500, y: 380, w: 60, h: 20}
+        ],
+        enemies: [
+            {x: 200, y: 380, minX: 150, maxX: 300}
+        ],
+        shellshots: [
+            {x: 300, y: 420, dir: 1, scamperMinX: 250, scamperMaxX: 380},
+            {x: 600, y: 240, dir: 1, scamperMinX: 550, scamperMaxX: 700}
+        ],
+        spikes: [
+            {x: 280, y: 350},
+            {x: 420, y: 300},
+            {x: 520, y: 200}
+        ],
+        goalX: 700,
+        goalY: 110
+    },
+
+    // Level 24 - Chaotic Mix
+    {
+        platforms: [
+            {x: 0, y: 550, w: 800, h: 50},
+            {x: 100, y: 480, w: 100, h: 20},
+            {x: 280, y: 480, w: 80, h: 20},
+            {x: 420, y: 480, w: 80, h: 20},
+            {x: 580, y: 480, w: 100, h: 20},
+            {x: 60, y: 380, w: 100, h: 20},
+            {x: 220, y: 380, w: 100, h: 20},
+            {x: 380, y: 380, w: 100, h: 20},
+            {x: 540, y: 380, w: 100, h: 20},
+            {x: 700, y: 380, w: 80, h: 20},
+            {x: 150, y: 280, w: 100, h: 20},
+            {x: 350, y: 280, w: 100, h: 20},
+            {x: 550, y: 280, w: 100, h: 20},
+            {x: 400, y: 170, w: 100, h: 20}
+        ],
+        enemies: [
+            {x: 200, y: 440, minX: 100, maxX: 280},
+            {x: 500, y: 340, minX: 420, maxX: 580}
+        ],
+        shellshots: [
+            {x: 320, y: 340, dir: 1, scamperMinX: 220, scamperMaxX: 420},
+            {x: 580, y: 240, dir: -1, scamperMinX: 540, scamperMaxX: 700}
+        ],
+        spikes: [
+            {x: 240, y: 360},
+            {x: 450, y: 360},
+            {x: 600, y: 260},
+            {x: 180, y: 260}
+        ],
+        goalX: 450,
+        goalY: 110
+    },
+
+    // Level 25 - Ultimate Challenge
+    {
+        platforms: [
+            {x: 0, y: 550, w: 800, h: 50},
+            {x: 70, y: 480, w: 90, h: 20},
+            {x: 200, y: 440, w: 90, h: 20},
+            {x: 330, y: 400, w: 90, h: 20},
+            {x: 460, y: 360, w: 90, h: 20},
+            {x: 590, y: 320, w: 90, h: 20},
+            {x: 720, y: 280, w: 70, h: 20},
+            {x: 150, y: 320, w: 80, h: 20},
+            {x: 400, y: 240, w: 80, h: 20},
+            {x: 650, y: 180, w: 80, h: 20},
+            {x: 300, y: 140, w: 100, h: 20}
+        ],
+        enemies: [
+            {x: 250, y: 400, minX: 200, maxX: 330},
+            {x: 540, y: 280, minX: 460, maxX: 620}
+        ],
+        shellshots: [
+            {x: 400, y: 360, dir: -1, scamperMinX: 330, scamperMaxX: 460},
+            {x: 450, y: 220, dir: 1, scamperMinX: 400, scamperMaxX: 550},
+            {x: 350, y: 100, dir: 1, scamperMinX: 300, scamperMaxX: 450}
+        ],
+        spikes: [
+            {x: 280, y: 380},
+            {x: 410, y: 340},
+            {x: 540, y: 300},
+            {x: 200, y: 300},
+            {x: 450, y: 220},
+            {x: 700, y: 160}
+        ],
+        goalX: 350,
         goalY: 60
     }
 ];

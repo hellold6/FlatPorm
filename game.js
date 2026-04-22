@@ -13,7 +13,7 @@ const gameContainer = document.getElementById('gameContainer');
         let playerVelY = 0;
         let playerVelX = 0;
         let isJumping = false;
-        let maxLevels = 20;
+        let maxLevels = 25;
         let gameStarted = false;
         let customLevel= null;
 
@@ -89,7 +89,7 @@ const gameContainer = document.getElementById('gameContainer');
                         gameContainer.appendChild(enemyEl);
                 });
 
-            /* SHELLERS
+            // SHELLERS
             level.shellers?.forEach(s => {
                 const sheller = document.createElement('div');
                 sheller.className = 'sheller';
@@ -98,7 +98,21 @@ const gameContainer = document.getElementById('gameContainer');
                 sheller.dataset.dir = s.dir || 1;
                 sheller.dataset.cooldown = 0;
                 gameContainer.appendChild(sheller);
-            }); */
+            });
+
+            // SHELLSHOTS
+            level.shellshots?.forEach(ss => {
+                const shellshot = document.createElement('div');
+                shellshot.className = 'shellshot';
+                shellshot.style.left = ss.x + 'px';
+                shellshot.style.top = ss.y + 'px';
+                shellshot.dataset.dir = ss.dir || 1;
+                shellshot.dataset.scamperMinX = ss.scamperMinX || (ss.x - 80);
+                shellshot.dataset.scamperMaxX = ss.scamperMaxX || (ss.x + 80);
+                shellshot.dataset.cooldown = 0;
+                shellshot.dataset.vx = 0;
+                gameContainer.appendChild(shellshot);
+            });
 
 
             // SPIKES
@@ -253,7 +267,6 @@ const gameContainer = document.getElementById('gameContainer');
             }
         }
 
-        /* GET DOWN MR PRESIDENT
         function updateShellers() {
             document.querySelectorAll('.sheller').forEach(sheller => {
                 let cooldown = Number(sheller.dataset.cooldown);
@@ -304,7 +317,87 @@ const gameContainer = document.getElementById('gameContainer');
                 if (x < -20 || x > 820) shell.remove();
             });
         }
-        */
+
+        function updateShellshots() {
+            document.querySelectorAll('.shellshot').forEach(shellshot => {
+                const ssx = parseFloat(shellshot.style.left);
+                const minX = Number(shellshot.dataset.scamperMinX);
+                const maxX = Number(shellshot.dataset.scamperMaxX);
+                let vx = Number(shellshot.dataset.vx);
+                let dir = Number(shellshot.dataset.dir);
+
+                // Scamper behavior: run away from player
+                if (playerX < ssx - 50) {
+                    // Player is far left, run right
+                    vx = 2;
+                    dir = 1;
+                } else if (playerX > ssx + 50) {
+                    // Player is far right, run left
+                    vx = -2;
+                    dir = -1;
+                } else {
+                    // Player in scamper range, stand still
+                    vx = 0;
+                }
+
+                // Keep in bounds
+                let newX = ssx + vx;
+                if (newX < minX) newX = minX;
+                if (newX > maxX) newX = maxX;
+                shellshot.style.left = newX + 'px';
+
+                shellshot.dataset.vx = vx;
+                shellshot.dataset.dir = dir;
+
+                // Fire shells
+                let cooldown = Number(shellshot.dataset.cooldown);
+                cooldown--;
+
+                if (cooldown <= 0) {
+                    fireShellshotShell(shellshot);
+                    cooldown = 90; // frames between shots (~1.5s at 60fps)
+                }
+
+                shellshot.dataset.cooldown = cooldown;
+            });
+        }
+
+        function fireShellshotShell(shellshot) {
+            const shell = document.createElement('div');
+            shell.className = 'shellshot-shell';
+
+            const x = parseFloat(shellshot.style.left) + 18;
+            const y = parseFloat(shellshot.style.top) + 15;
+
+            shell.style.left = x + 'px';
+            shell.style.top = y + 'px';
+            shell.dataset.vx = 5 * Number(shellshot.dataset.dir);
+
+            gameContainer.appendChild(shell);
+        }
+
+        function updateShellshotShells() {
+            document.querySelectorAll('.shellshot-shell').forEach(shell => {
+                let x = parseFloat(shell.style.left);
+                const vx = Number(shell.dataset.vx);
+
+                x += vx;
+                shell.style.left = x + 'px';
+
+                // collision with player
+                const sw = 8, sh = 8;
+                const pw = PLAYER_HITBOX_WIDTH, ph = PLAYER_HITBOX_HEIGHT;
+
+                if (isColliding(x, parseFloat(shell.style.top), sw, sh,
+                                playerX, playerY, pw, ph)) {
+                    shell.remove();
+                    playerDeath();
+                }
+
+                // cleanup offscreen
+                if (x < -20 || x > 820) shell.remove();
+            });
+        }
         
         const devMenu = document.getElementById('devMenu');
         let invincible = false;
@@ -448,11 +541,11 @@ const gameContainer = document.getElementById('gameContainer');
                 isOnGround = false;
             }
 
-            // GET DOWN MR PRESIDENT
-            //updateShellers();
-            //updateShells();
-
-
+            // Update enemies and projectiles
+            updateShellers();
+            updateShells();
+            updateShellshots();
+            updateShellshotShells();
             updateEnemies();
             updatePlayerPosition();
         }
