@@ -5,26 +5,50 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Simple HTML Platformer - 20 Levels</title>
     <style>
+        :root {
+            --bg-top: #5f88d8;
+            --bg-bottom: #3a4f8b;
+            --ui-bg: rgba(16, 22, 36, 0.82);
+            --panel-bg: rgba(9, 12, 20, 0.95);
+            --panel-border: #5f7fbd;
+            --button-main: #386de0;
+            --button-main-hover: #2e57b3;
+            --button-alt: #2d3648;
+            --button-alt-hover: #3a455d;
+            --text-main: #f5f7ff;
+            --game-scale: 1;
+        }
+
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
 
+        html,
         body {
-            font-family: Arial, sans-serif;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        body {
+            font-family: Verdana, Geneva, Tahoma, sans-serif;
             display: flex;
             justify-content: center;
             align-items: center;
-            min-height: 100vh;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100%;
+            background: radial-gradient(circle at top, var(--bg-top), var(--bg-bottom));
+            color: var(--text-main);
         }
 
-        html, body {
-        width: 800px;
-        height: 600px;
-        margin: 0;
-        overflow: hidden;
+        #gameViewport {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            touch-action: none;
         }
 
         #gameContainer {
@@ -35,6 +59,8 @@
             border: 3px solid #333;
             overflow: hidden;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            transform: scale(var(--game-scale));
+            transform-origin: center center;
         }
 
         #mainMenu {
@@ -68,7 +94,7 @@
         }
 
         #mainMenu button:hover {
-            background: #764ba2;
+            background: var(--button-main-hover);
         }
 
         #devMenu {
@@ -177,11 +203,33 @@
             top: 10px;
             left: 10px;
             z-index: 200;
-            background: rgba(0, 0, 0, 0.7);
+            background: var(--ui-bg);
             color: white;
             padding: 10px 15px;
             border-radius: 5px;
             font-size: 16px;
+            min-width: 200px;
+        }
+
+        #uiActions {
+            margin-top: 8px;
+            display: flex;
+            gap: 6px;
+        }
+
+        #uiActions button {
+            flex: 1;
+            padding: 6px 8px;
+            font-size: 13px;
+            border: 0;
+            border-radius: 4px;
+            color: var(--text-main);
+            background: var(--button-alt);
+            cursor: pointer;
+        }
+
+        #uiActions button:hover {
+            background: var(--button-alt-hover);
         }
 
         #gameOver {
@@ -214,14 +262,113 @@
             font-size: 16px;
             margin: 5px;
             cursor: pointer;
-            background: #667eea;
+            background: var(--button-main);
             color: white;
             border: none;
             border-radius: 5px;
         }
 
         #gameOver button:hover {
-            background: #764ba2;
+            background: var(--button-main-hover);
+        }
+
+        #pauseOverlay,
+        #settingsPanel {
+            position: absolute;
+            inset: 0;
+            z-index: 320;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.62);
+        }
+
+        .panel {
+            width: min(420px, 90%);
+            background: var(--panel-bg);
+            border: 2px solid var(--panel-border);
+            border-radius: 10px;
+            padding: 22px;
+            color: var(--text-main);
+        }
+
+        .panel h2 {
+            margin-bottom: 14px;
+        }
+
+        .panel button {
+            margin-top: 8px;
+            padding: 10px 14px;
+            width: 100%;
+            border: 0;
+            border-radius: 6px;
+            color: var(--text-main);
+            background: var(--button-main);
+            cursor: pointer;
+        }
+
+        .panel button:hover {
+            background: var(--button-main-hover);
+        }
+
+        .setting-row {
+            margin-bottom: 14px;
+        }
+
+        .setting-row label {
+            display: block;
+            margin-bottom: 6px;
+        }
+
+        .setting-row input {
+            width: 100%;
+        }
+
+        #touchControls {
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 10px;
+            z-index: 360;
+            display: none;
+            justify-content: space-between;
+            align-items: flex-end;
+            padding: 0 14px;
+            pointer-events: none;
+        }
+
+        .touch-group {
+            display: flex;
+            gap: 8px;
+            pointer-events: auto;
+        }
+
+        .touch-btn {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            border: 2px solid rgba(255, 255, 255, 0.65);
+            background: rgba(16, 22, 36, 0.65);
+            color: #fff;
+            font-size: 22px;
+            font-weight: 700;
+        }
+
+        .touch-btn:active,
+        .touch-btn.active {
+            background: rgba(56, 109, 224, 0.9);
+        }
+
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
         }
 
         .fade-in {
@@ -234,6 +381,17 @@
             align-items: center;
         }
 
+        @media (max-width: 900px), (pointer: coarse) {
+            #touchControls {
+                display: flex;
+            }
+
+            #ui {
+                font-size: 14px;
+                min-width: 160px;
+            }
+        }
+
 
         @keyframes fadeIn {
             from { opacity: 0; }
@@ -242,38 +400,87 @@
     </style>
 </head>
 <body>
-    <div id="gameContainer">
-        <div id="player"></div>
+    <div id="gameViewport">
+        <div id="gameContainer">
+            <div id="player"></div>
 
-        <div id="mainMenu">
-            <h1>FlatPorm</h1>
-            <button id="startGameBtn">Start Game</button>
-            <h1> </h1>
-            <div class="uploadWrap">
-                <input type="file" id="levelUpload" accept=".json">
+            <div id="mainMenu">
+                <h1>FlatPorm</h1>
+                <button id="startGameBtn">Start Game</button>
+                <h1> </h1>
+                <div class="upload-wrap">
+                    <label class="sr-only" for="levelUpload">Upload Custom Level JSON</label>
+                    <input type="file" id="levelUpload" accept=".json">
+                </div>
+                <h1> </h1>
+                <button id="customLevelBtn">Custom Levels</button>
             </div>
-            <h1> </h1>
-            <button id="customLevelBtn">Custom Levels</button>
-        </div>
 
+<<<<<<< HEAD
         <div id="ui">
             <div>Level: <span id="levelNum">1</span>/25</div>
             <div>Lives: <span id="lives">3</span></div>
         </div>
+=======
+            <div id="ui">
+                <div>Level: <span id="levelNum">1</span>/<span id="maxLevelNum">20</span></div>
+                <div>Lives: <span id="lives">3</span></div>
+                <div id="uiActions">
+                    <button id="pauseBtn" type="button">Pause</button>
+                    <button id="settingsBtn" type="button">Settings</button>
+                </div>
+            </div>
+>>>>>>> ca5af4ea14f5b53ba97e9be4efebfff5b3122a89
 
-        <div id="devMenu">
-            <h3>Dev Menu</h3>
-            <button id="skipLevelBtn">Skip Level</button>
-            <button id="addLifeBtn">Add Life</button>
-            <button id="toggleInvincibleBtn">Toggle Invincible</button>
-        </div>
+            <div id="devMenu">
+                <h3>Dev Menu</h3>
+                <button id="skipLevelBtn">Skip Level</button>
+                <button id="addLifeBtn">Add Life</button>
+                <button id="toggleInvincibleBtn">Toggle Invincible</button>
+            </div>
 
-        <div id="gameOver">
-            <h1 id="gameOverTitle">Game Over</h1>
-            <p id="gameOverText"></p>
-            <button id="restartBtn">Restart Game</button>
+            <div id="pauseOverlay">
+                <div class="panel">
+                    <h2>Paused</h2>
+                    <p>Press P or Escape to continue.</p>
+                    <button id="resumeBtn" type="button">Resume</button>
+                    <button id="pauseRestartBtn" type="button">Restart Game</button>
+                </div>
+            </div>
+
+            <div id="settingsPanel">
+                <div class="panel">
+                    <h2>Settings</h2>
+                    <div class="setting-row">
+                        <label for="musicSlider">Music Volume: <span id="musicValue">60%</span></label>
+                        <input id="musicSlider" type="range" min="0" max="100" value="60">
+                    </div>
+                    <div class="setting-row">
+                        <label for="sfxSlider">SFX Volume: <span id="sfxValue">80%</span></label>
+                        <input id="sfxSlider" type="range" min="0" max="100" value="80">
+                    </div>
+                    <button id="closeSettingsBtn" type="button">Close Settings</button>
+                </div>
+            </div>
+
+            <div id="gameOver">
+                <h1 id="gameOverTitle">Game Over</h1>
+                <p id="gameOverText"></p>
+                <button id="restartBtn">Restart Game</button>
+            </div>
+
+            <div id="touchControls">
+                <div class="touch-group">
+                    <button class="touch-btn" data-touch-key="ArrowLeft" type="button">&larr;</button>
+                    <button class="touch-btn" data-touch-key="ArrowRight" type="button">&rarr;</button>
+                </div>
+                <div class="touch-group">
+                    <button class="touch-btn" data-touch-key="Jump" type="button">&uarr;</button>
+                </div>
+            </div>
         </div>
     </div>
+    <script src="levelSchema.js"></script>
     <script src="levels.js"></script>
     <script src="game.js"></script>
 </body>

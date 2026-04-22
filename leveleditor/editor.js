@@ -7,6 +7,11 @@ let currentLevel = null;
 const editor = document.getElementById("editorContainer");
 const output = document.getElementById("output");
 
+function getNormalizedLevel(level) {
+    if (!window.LevelSchema) return level;
+    return window.LevelSchema.normalizeLevel(level);
+}
+
 
 // ===== SNAP FUNCTION =====
 
@@ -40,8 +45,15 @@ document.querySelectorAll("button[data-mode]").forEach(btn => {
 });
 
 document.getElementById("exportBtn").addEventListener("click", () => {
-    // Extra indentation: 8 spaces instead of 4
-    output.value = JSON.stringify(currentLevel, null, 8);
+    const normalized = getNormalizedLevel(currentLevel);
+    const validation = window.LevelSchema ? window.LevelSchema.validateLevel(normalized) : { valid: true, errors: [] };
+
+    if (!validation.valid) {
+        output.value = "Export blocked. Fix these issues first:\n- " + validation.errors.join("\n- ");
+        return;
+    }
+
+    output.value = JSON.stringify(normalized, null, 4);
 });
 
 
@@ -50,7 +62,7 @@ document.getElementById("exportBtn").addEventListener("click", () => {
 function loadLevel(index) {
     currentLevelIndex = index;
     // deep clone so we don't mutate original levels array
-    currentLevel = JSON.parse(JSON.stringify(levels[index]));
+    currentLevel = getNormalizedLevel(JSON.parse(JSON.stringify(levels[index])));
 
     // Clear editor
     editor.innerHTML = "";
