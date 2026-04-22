@@ -593,5 +593,138 @@ const levels = [
         ],
         goalX: 350,
         goalY: 60
+    },
+
+    // Level 26 - Introduction to Floaters
+    {
+        platforms: [
+            {x: 0, y: 550, w: 800, h: 50},
+            {x: 100, y: 480, w: 120, h: 20},
+            {x: 300, y: 420, w: 120, h: 20},
+            {x: 500, y: 360, w: 120, h: 20},
+            {x: 200, y: 300, w: 100, h: 20},
+            {x: 500, y: 240, w: 100, h: 20}
+        ],
+        enemies: [
+            {x: 350, y: 300, type: "floater", minY: 250, maxY: 400}
+        ],
+        spikes: [{x: 600, y: 340}],
+        goalX: 720,
+        goalY: 200
+    },
+
+    // Level 27 - Floaters and Walkers
+    {
+        platforms: [
+            {x: 0, y: 550, w: 800, h: 50},
+            {x: 80, y: 480, w: 100, h: 20},
+            {x: 220, y: 440, w: 100, h: 20},
+            {x: 360, y: 400, w: 100, h: 20},
+            {x: 500, y: 360, w: 100, h: 20},
+            {x: 100, y: 320, w: 80, h: 20},
+            {x: 500, y: 280, w: 80, h: 20},
+            {x: 650, y: 240, w: 100, h: 20}
+        ],
+        enemies: [
+            {x: 150, y: 400, minX: 80, maxX: 220},
+            {x: 400, y: 270, type: "floater", minY: 200, maxY: 340},
+            {x: 620, y: 200, minX: 500, maxX: 750}
+        ],
+        spikes: [
+            {x: 280, y: 420},
+            {x: 450, y: 380}
+        ],
+        goalX: 700,
+        goalY: 150
+    },
+
+    // Level 28 - Multiple Floaters
+    {
+        platforms: [
+            {x: 0, y: 550, w: 800, h: 50},
+            {x: 50, y: 480, w: 90, h: 20},
+            {x: 180, y: 440, w: 90, h: 20},
+            {x: 310, y: 400, w: 90, h: 20},
+            {x: 440, y: 360, w: 90, h: 20},
+            {x: 570, y: 320, w: 90, h: 20},
+            {x: 700, y: 280, w: 80, h: 20},
+            {x: 200, y: 300, w: 70, h: 20},
+            {x: 500, y: 240, w: 70, h: 20}
+        ],
+        enemies: [
+            {x: 250, y: 350, type: "floater", minY: 280, maxY: 420},
+            {x: 550, y: 280, type: "floater", minY: 200, maxY: 360},
+            {x: 400, y: 280, minX: 310, maxX: 440}
+        ],
+        spikes: [
+            {x: 100, y: 460},
+            {x: 350, y: 380},
+            {x: 650, y: 300}
+        ],
+        goalX: 740,
+        goalY: 200
+    },
+
+    // Level 29 - Floaters with Shellshots
+    {
+        platforms: [
+            {x: 0, y: 550, w: 800, h: 50},
+            {x: 70, y: 480, w: 100, h: 20},
+            {x: 220, y: 440, w: 100, h: 20},
+            {x: 370, y: 400, w: 100, h: 20},
+            {x: 520, y: 360, w: 100, h: 20},
+            {x: 670, y: 320, w: 100, h: 20},
+            {x: 150, y: 300, w: 80, h: 20},
+            {x: 500, y: 260, w: 80, h: 20}
+        ],
+        enemies: [
+            {x: 300, y: 340, type: "floater", minY: 260, maxY: 400},
+            {x: 600, y: 280, type: "floater", minY: 200, maxY: 360}
+        ],
+        shellshots: [
+            {x: 400, y: 320, dir: 1, scamperMinX: 370, scamperMaxX: 520}
+        ],
+        spikes: [
+            {x: 180, y: 420},
+            {x: 420, y: 380},
+            {x: 650, y: 300}
+        ],
+        goalX: 720,
+        goalY: 240
+    },
+
+    // Level 30 - Floater Gauntlet
+    {
+        platforms: [
+            {x: 0, y: 550, w: 800, h: 50},
+            {x: 60, y: 480, w: 80, h: 20},
+            {x: 180, y: 430, w: 80, h: 20},
+            {x: 300, y: 380, w: 80, h: 20},
+            {x: 420, y: 330, w: 80, h: 20},
+            {x: 540, y: 280, w: 80, h: 20},
+            {x: 660, y: 230, w: 80, h: 20},
+            {x: 150, y: 300, w: 70, h: 20},
+            {x: 450, y: 220, w: 70, h: 20}
+        ],
+        enemies: [
+            {x: 200, y: 360, type: "floater", minY: 280, maxY: 420},
+            {x: 380, y: 300, type: "floater", minY: 220, maxY: 380},
+            {x: 560, y: 240, type: "floater", minY: 160, maxY: 320},
+            {x: 320, y: 240, minX: 300, maxX: 420}
+        ],
+        shellshots: [
+            {x: 250, y: 340, dir: 1, scamperMinX: 180, scamperMaxX: 300},
+            {x: 600, y: 200, dir: -1, scamperMinX: 540, scamperMaxX: 660}
+        ],
+        spikes: [
+            {x: 120, y: 460},
+            {x: 240, y: 410},
+            {x: 360, y: 360},
+            {x: 480, y: 300},
+            {x: 600, y: 260},
+            {x: 200, y: 280}
+        ],
+        goalX: 710,
+        goalY: 150
     }
 ];

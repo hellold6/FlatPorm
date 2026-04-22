@@ -211,11 +211,24 @@ function loadLevel(levelNum) {
     level.enemies.forEach((enemy) => {
         const enemyEl = document.createElement("div");
         enemyEl.className = "enemy";
+        const isFloater = enemy.type === "floater";
+        
         enemyEl.style.left = `${enemy.x}px`;
         enemyEl.style.top = `${enemy.y}px`;
-        enemyEl.dataset.minx = String(enemy.minX);
-        enemyEl.dataset.maxx = String(enemy.maxX);
-        enemyEl.dataset.vx = "2";
+        
+        if (isFloater) {
+            // Floater enemy configuration (vertical movement)
+            enemyEl.dataset.type = "floater";
+            enemyEl.dataset.miny = String(enemy.minY ?? (enemy.y - 60));
+            enemyEl.dataset.maxy = String(enemy.maxY ?? (enemy.y + 60));
+            enemyEl.dataset.vy = "1.5";
+        } else {
+            // Walker enemy configuration (horizontal movement)
+            enemyEl.dataset.minx = String(enemy.minX);
+            enemyEl.dataset.maxx = String(enemy.maxX);
+            enemyEl.dataset.vx = "2";
+        }
+        
         enemyEl.dataset.hitboxWidth = String(enemy.hitboxW || ENEMY_HITBOX_WIDTH);
         enemyEl.dataset.hitboxHeight = String(enemy.hitboxH || ENEMY_HITBOX_HEIGHT);
         enemyEls.push(enemyEl);
@@ -284,19 +297,39 @@ function updatePlayerPosition() {
 function updateEnemies() {
     for (let index = 0; index < enemyEls.length; index += 1) {
         const enemy = enemyEls[index];
-        let x = Number(enemy.style.left.replace("px", ""));
-        const minX = Number(enemy.dataset.minx);
-        const maxX = Number(enemy.dataset.maxx);
-        let vx = Number(enemy.dataset.vx);
+        const type = enemy.dataset.type || "walker";
+        
+        if (type === "floater") {
+            // Vertical movement for floater enemies
+            let y = Number(enemy.style.top.replace("px", ""));
+            const minY = Number(enemy.dataset.miny);
+            const maxY = Number(enemy.dataset.maxy);
+            let vy = Number(enemy.dataset.vy);
 
-        x += vx;
-        if (x <= minX || x >= maxX) {
-            vx *= -1;
+            y += vy;
+            if (y <= minY || y >= maxY) {
+                vy *= -1;
+                y += vy;
+            }
+
+            enemy.style.top = `${y}px`;
+            enemy.dataset.vy = String(vy);
+        } else {
+            // Horizontal movement for walker enemies (default)
+            let x = Number(enemy.style.left.replace("px", ""));
+            const minX = Number(enemy.dataset.minx);
+            const maxX = Number(enemy.dataset.maxx);
+            let vx = Number(enemy.dataset.vx);
+
             x += vx;
-        }
+            if (x <= minX || x >= maxX) {
+                vx *= -1;
+                x += vx;
+            }
 
-        enemy.style.left = `${x}px`;
-        enemy.dataset.vx = String(vx);
+            enemy.style.left = `${x}px`;
+            enemy.dataset.vx = String(vx);
+        }
     }
 }
 

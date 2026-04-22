@@ -316,6 +316,17 @@
             animation: floatPulse 2.6s ease-in-out infinite;
         }
 
+        .enemy[data-type="floater"] {
+            background-image: url("assets/enemy.gif");
+            filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.34)) drop-shadow(0 0 10px rgba(200, 100, 255, 0.5)) hue-rotate(280deg);
+            animation: floatPulse 1.8s ease-in-out infinite, float 3s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-6px); }
+        }
+
     .sheller {
         position: absolute;
         width: 36px;
