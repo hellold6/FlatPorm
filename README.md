@@ -52,6 +52,8 @@ to do!
 - reach the <ins>green goal orb</ins> to advance  
 - avoid enemies (yellow) and spikes (red)
 - you start with 3 lives  
+- pause: <ins>p</ins> or <ins>escape</ins>
+- on mobile/tablet: use on-screen touch controls
 
 just open the file in any modern browser and you're FLATPORMING.
 
@@ -96,6 +98,53 @@ Each level is defined inside the file like this:
 ```
 from what we remember at least..............................
 the code is constantly updating so check back every now and then!! 
+
+---
+
+## custom level format
+
+custom uploads now validate against a shared schema used by both the game and editor.
+
+required fields:
+
+```js
+{
+  platforms: [ { x, y, w, h }, ... ],
+  enemies:   [ { x, y, minX, maxX }, ... ],
+  spikes:    [ { x, y }, ... ],
+  goalX: number,
+  goalY: number
+}
+```
+
+optional fields:
+
+```js
+{
+  enemies: [ { hitboxW, hitboxH } ],
+  spikes:  [ { hitboxW, hitboxH } ],
+  goalW: number,
+  goalH: number
+}
+```
+
+you can upload either:
+
+- one level object
+- an array of level objects
+
+---
+
+## quick regression checklist
+
+- [ ] touching spikes removes exactly 1 life
+- [ ] touching enemies removes exactly 1 life
+- [ ] reaching goal loads next level
+- [ ] lives hitting 0 shows game over
+- [ ] restart starts from level 1 with 3 lives
+- [ ] pause/resume works from keyboard and ui button
+- [ ] mobile touch controls move and jump correctly
+- [ ] custom level upload rejects invalid json with an error
 
 - i, equinox, did... like. nothing. i came up with the idea lmao
 - i made the music and sprites which took like. max 1 hour

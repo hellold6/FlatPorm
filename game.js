@@ -1,468 +1,634 @@
-const gameContainer = document.getElementById('gameContainer');
-        src="levels.js";
-        const player = document.getElementById('player');
-        const uiLevel = document.getElementById('levelNum');
-        const uiLives = document.getElementById('lives');
-        const gameOverDiv = document.getElementById('gameOver');
+const gameContainer = document.getElementById("gameContainer");
+const player = document.getElementById("player");
+const uiLevel = document.getElementById("levelNum");
+const uiLives = document.getElementById("lives");
+const uiMaxLevel = document.getElementById("maxLevelNum");
+const gameOverDiv = document.getElementById("gameOver");
+const mainMenu = document.getElementById("mainMenu");
+const pauseOverlay = document.getElementById("pauseOverlay");
+const settingsPanel = document.getElementById("settingsPanel");
+const levelUploadInput = document.getElementById("levelUpload");
 
-        let currentLevel = 1;
-        let lives = 3;
-        let gameActive = true;
-        let playerX = 50;
-        let playerY = 450;
-        let playerVelY = 0;
-        let playerVelX = 0;
-        let isJumping = false;
-        let maxLevels = 20;
-        let gameStarted = false;
-        let customLevel= null;
+const WORLD_WIDTH = 800;
+const WORLD_HEIGHT = 600;
 
-        // Player hitbox
-        let PLAYER_HITBOX_WIDTH = 30;
-        let PLAYER_HITBOX_HEIGHT = 24;
+let currentLevel = 1;
+let lives = 3;
+let gameActive = true;
+let gameStarted = false;
+let paused = false;
 
-        // Enemy default hitbox
-        let ENEMY_HITBOX_WIDTH = 34;
-        let ENEMY_HITBOX_HEIGHT = 30;
+let playerX = 50;
+let playerY = 450;
+let playerVelY = 0;
+let playerVelX = 0;
 
-        // Spike default hitbox
-        let SPIKE_HITBOX_WIDTH = 40;
-        let SPIKE_HITBOX_HEIGHT = 37;
+let maxLevels = Array.isArray(levels) ? levels.length : 20;
+let invincible = false;
+let loadedCustomLevelCount = 0;
 
-        // Goal default hitbox
-        let GOAL_HITBOX_WIDTH = 42;
-        let GOAL_HITBOX_HEIGHT = 41;
+let musicVolume = 0.6;
+let sfxVolume = 0.8;
 
+const PLAYER_HITBOX_WIDTH = 30;
+const PLAYER_HITBOX_HEIGHT = 24;
+const ENEMY_HITBOX_WIDTH = 34;
+const ENEMY_HITBOX_HEIGHT = 30;
+const SPIKE_HITBOX_WIDTH = 40;
+const SPIKE_HITBOX_HEIGHT = 37;
+const GOAL_HITBOX_WIDTH = 42;
+const GOAL_HITBOX_HEIGHT = 41;
 
-        const GRAVITY = 0.6;
-        const JUMP_STRENGTH = -12;
-        const MOVE_SPEED = 5;
-        
-        const keys = {};
+const GRAVITY = 0.6;
+const JUMP_STRENGTH = -12;
+const MOVE_SPEED = 5;
+const JUMP_CUTOFF_MULTIPLIER = 0.45;
 
-        window.addEventListener('keydown', (e) => {
-            keys[e.key] = true;
-            if (e.key === ' ') e.preventDefault();
-        });
+const COYOTE_FRAMES = 8;
+const JUMP_BUFFER_FRAMES = 8;
+let coyoteTimer = 0;
+let jumpBufferTimer = 0;
+let wasJumpHeld = false;
 
-        window.addEventListener('keyup', (e) => {
-            keys[e.key] = false;
-        });
+const keys = {};
+const touchKeys = {
+    ArrowLeft: false,
+    ArrowRight: false,
+    Jump: false
+};
 
-        function isColliding(x, y, w, h, px, py, pw, ph) {
-            return x < px + pw && x + w > px && y < py + ph && y + h > py;
+let platformEls = [];
+let enemyEls = [];
+let spikeEls = [];
+let goalEl = null;
+
+const devMenu = document.getElementById("devMenu");
+const konamiCode = ["ArrowUp", "ArrowUp", "ArrowDown", "ArrowDown", "ArrowLeft", "ArrowRight", "ArrowLeft", "ArrowRight", "b", "a"];
+let konamiIndex = 0;
+
+function fitGameToViewport() {
+    const scale = Math.min(window.innerWidth / WORLD_WIDTH, window.innerHeight / WORLD_HEIGHT);
+    document.documentElement.style.setProperty("--game-scale", String(Math.max(0.45, scale)));
+}
+
+function syncMaxLevelUI() {
+    maxLevels = levels.length;
+    uiMaxLevel.textContent = String(maxLevels);
+}
+
+function isColliding(x, y, w, h, px, py, pw, ph) {
+    return x < px + pw && x + w > px && y < py + ph && y + h > py;
+}
+
+function getPlayerWidth() {
+    return Number(player.dataset.hitboxWidth || PLAYER_HITBOX_WIDTH);
+}
+
+function getPlayerHeight() {
+    return Number(player.dataset.hitboxHeight || PLAYER_HITBOX_HEIGHT);
+}
+
+function setTouchButtonActiveState(key, active) {
+    const button = document.querySelector(`[data-touch-key="${key}"]`);
+    if (!button) return;
+    button.classList.toggle("active", active);
+}
+
+function setTouchKey(key, active) {
+    touchKeys[key] = active;
+    setTouchButtonActiveState(key, active);
+}
+
+function isLeftPressed() {
+    return keys.ArrowLeft || keys.a || touchKeys.ArrowLeft;
+}
+
+function isRightPressed() {
+    return keys.ArrowRight || keys.d || touchKeys.ArrowRight;
+}
+
+function isJumpPressed() {
+    return keys.ArrowUp || keys.w || keys[" "] || touchKeys.Jump;
+}
+
+function clearWorldObjects() {
+    gameContainer.querySelectorAll(".platform, .enemy, .spike, .goal").forEach((el) => el.remove());
+    platformEls = [];
+    enemyEls = [];
+    spikeEls = [];
+    goalEl = null;
+}
+
+function normalizeRuntimeLevels() {
+    if (!window.LevelSchema) return;
+
+    for (let i = 0; i < levels.length; i++) {
+        levels[i] = window.LevelSchema.normalizeLevel(levels[i]);
+    }
+}
+
+function findSpikeAnchorY(spikeX) {
+    let anchorY = null;
+
+    for (let i = 0; i < platformEls.length; i++) {
+        const plat = platformEls[i];
+        const px = Number(plat.style.left.replace("px", ""));
+        const py = Number(plat.style.top.replace("px", ""));
+        const pw = Number(plat.dataset.hitboxWidth);
+
+        if (spikeX + SPIKE_HITBOX_WIDTH > px && spikeX < px + pw) {
+            if (anchorY === null || py < anchorY) {
+                anchorY = py;
+            }
+        }
+    }
+
+    return anchorY;
+}
+
+function loadLevel(levelNum) {
+    currentLevel = levelNum;
+    uiLevel.textContent = String(currentLevel);
+    clearWorldObjects();
+
+    const rawLevel = levels[levelNum - 1];
+    const level = window.LevelSchema ? window.LevelSchema.normalizeLevel(rawLevel) : rawLevel;
+
+    level.platforms.forEach((p) => {
+        const platformEl = document.createElement("div");
+        platformEl.className = "platform";
+        platformEl.style.left = `${p.x}px`;
+        platformEl.style.top = `${p.y}px`;
+        platformEl.style.width = `${p.w}px`;
+        platformEl.style.height = `${p.h}px`;
+        platformEl.dataset.hitboxWidth = String(p.w);
+        platformEl.dataset.hitboxHeight = String(p.h);
+        platformEls.push(platformEl);
+        gameContainer.appendChild(platformEl);
+    });
+
+    level.enemies.forEach((e) => {
+        const enemyEl = document.createElement("div");
+        enemyEl.className = "enemy";
+        enemyEl.style.left = `${e.x}px`;
+        enemyEl.style.top = `${e.y}px`;
+        enemyEl.dataset.minx = String(e.minX);
+        enemyEl.dataset.maxx = String(e.maxX);
+        enemyEl.dataset.vx = "2";
+        enemyEl.dataset.hitboxWidth = String(e.hitboxW || ENEMY_HITBOX_WIDTH);
+        enemyEl.dataset.hitboxHeight = String(e.hitboxH || ENEMY_HITBOX_HEIGHT);
+        enemyEls.push(enemyEl);
+        gameContainer.appendChild(enemyEl);
+    });
+
+    level.spikes.forEach((s) => {
+        const spikeEl = document.createElement("div");
+        spikeEl.className = "spike";
+        spikeEl.style.left = `${s.x}px`;
+
+        const anchorY = findSpikeAnchorY(s.x);
+        if (anchorY !== null) {
+            spikeEl.style.top = `${anchorY - SPIKE_HITBOX_HEIGHT}px`;
+        } else {
+            spikeEl.style.top = `${s.y}px`;
         }
 
-        function loadLevel(levelNum) {
-                currentLevel = levelNum;
-                uiLevel.textContent = currentLevel;
+        spikeEl.dataset.hitboxWidth = String(s.hitboxW || SPIKE_HITBOX_WIDTH);
+        spikeEl.dataset.hitboxHeight = String(s.hitboxH || SPIKE_HITBOX_HEIGHT);
+        spikeEls.push(spikeEl);
+        gameContainer.appendChild(spikeEl);
+    });
 
-                // Remove old objects
-                gameContainer.querySelectorAll('.platform:not(#ground), .enemy, .spike, .goal').forEach(el => el.remove());
+    goalEl = document.createElement("div");
+    goalEl.className = "goal";
+    goalEl.style.left = `${level.goalX}px`;
+    goalEl.style.top = `${level.goalY}px`;
+    goalEl.dataset.hitboxWidth = String(level.goalW || GOAL_HITBOX_WIDTH);
+    goalEl.dataset.hitboxHeight = String(level.goalH || GOAL_HITBOX_HEIGHT);
+    gameContainer.appendChild(goalEl);
 
-                const level = levels[levelNum - 1];
+    playerX = 50;
+    playerY = 450;
+    playerVelY = 0;
+    playerVelX = 0;
+    coyoteTimer = 0;
+    jumpBufferTimer = 0;
+    player.dataset.hitboxWidth = String(PLAYER_HITBOX_WIDTH);
+    player.dataset.hitboxHeight = String(PLAYER_HITBOX_HEIGHT);
+    updatePlayerPosition();
+}
 
-                // PLATFORMS
-                level.platforms.forEach(p => {
-                        const platformEl = document.createElement('div');
-                        platformEl.className = 'platform';
-                        platformEl.style.left = p.x + 'px';
-                        platformEl.style.top = p.y + 'px';
-                        platformEl.style.width = p.w + 'px';
-                        platformEl.style.height = p.h + 'px';
-                        platformEl.dataset.hitboxWidth = p.w;
-                        platformEl.dataset.hitboxHeight = p.h;
-                        gameContainer.appendChild(platformEl);
-                });
+function updatePlayerPosition() {
+    player.style.left = `${playerX}px`;
+    player.style.top = `${playerY}px`;
+}
 
-                // ENEMIES
-                level.enemies.forEach(e => {
-                        const enemyEl = document.createElement('div');
-                        enemyEl.className = 'enemy';
-                        enemyEl.style.left = e.x + 'px';
-                        enemyEl.style.top = e.y + 'px';
-                        enemyEl.dataset.minx = e.minX;
-                        enemyEl.dataset.maxx = e.maxX;
-                        enemyEl.dataset.vx = 2;
-                        enemyEl.dataset.hitboxWidth = e.hitboxW || ENEMY_HITBOX_WIDTH;
-                        enemyEl.dataset.hitboxHeight = e.hitboxH || ENEMY_HITBOX_HEIGHT;
-                        gameContainer.appendChild(enemyEl);
-                });
+function updateEnemies() {
+    for (let i = 0; i < enemyEls.length; i++) {
+        const enemy = enemyEls[i];
+        let x = Number(enemy.style.left.replace("px", ""));
+        const minX = Number(enemy.dataset.minx);
+        const maxX = Number(enemy.dataset.maxx);
+        let vx = Number(enemy.dataset.vx);
 
-            /* SHELLERS
-            level.shellers?.forEach(s => {
-                const sheller = document.createElement('div');
-                sheller.className = 'sheller';
-                sheller.style.left = s.x + 'px';
-                sheller.style.top = s.y + 'px';
-                sheller.dataset.dir = s.dir || 1;
-                sheller.dataset.cooldown = 0;
-                gameContainer.appendChild(sheller);
-            }); */
+        x += vx;
+        if (x <= minX || x >= maxX) {
+            vx *= -1;
+            x += vx;
+        }
 
+        enemy.style.left = `${x}px`;
+        enemy.dataset.vx = String(vx);
+    }
+}
 
-            // SPIKES
-            level.spikes.forEach(s => {
-                const spikeEl = document.createElement('div');
-                spikeEl.className = 'spike';
-                spikeEl.style.left = s.x + 'px';
+function checkCollisions() {
+    let isOnGround = false;
+    let hitHazard = false;
+    let hitGoal = false;
 
-                // find the platform below this spike
-                let platformBelow = null;
-                document.querySelectorAll('.platform').forEach(plat => {
-                    const px = parseFloat(plat.style.left);
-                    const pwPlat = parseFloat(plat.dataset.hitboxWidth);
-                    const py = parseFloat(plat.style.top);
-                    if (s.x + SPIKE_HITBOX_WIDTH > px && s.x < px + pwPlat) {
-                        if (!platformBelow || py < platformBelow.y) {
-                            platformBelow = { y: py };
-                        }
-                    }
-                });
+    const pw = getPlayerWidth();
+    const ph = getPlayerHeight();
 
-                if (platformBelow) {
-                    // anchor spike on top of platform
-                    spikeEl.style.top = (platformBelow.y - SPIKE_HITBOX_HEIGHT) + 'px';
-                } else {
-                    // fallback if no platform found
-                    spikeEl.style.top = s.y + 'px';
-                }
+    for (let i = 0; i < platformEls.length; i++) {
+        const platform = platformEls[i];
+        const px = Number(platform.style.left.replace("px", ""));
+        const py = Number(platform.style.top.replace("px", ""));
+        const pWidth = Number(platform.dataset.hitboxWidth);
+        const pHeight = Number(platform.dataset.hitboxHeight);
 
-                spikeEl.dataset.hitboxWidth = s.hitboxW || SPIKE_HITBOX_WIDTH;
-                spikeEl.dataset.hitboxHeight = s.hitboxH || SPIKE_HITBOX_HEIGHT;
-                gameContainer.appendChild(spikeEl);
-            });
-
-
-                // GOAL
-                const goalEl = document.createElement('div');
-                goalEl.className = 'goal';
-                goalEl.style.left = level.goalX + 'px';
-                goalEl.style.top = level.goalY + 'px';
-                goalEl.dataset.hitboxWidth = level.goalW || GOAL_HITBOX_WIDTH;
-                goalEl.dataset.hitboxHeight = level.goalH || GOAL_HITBOX_HEIGHT;
-                gameContainer.appendChild(goalEl);
-
-                // Reset player
-                playerX = 50;
-                playerY = 450;
+        if (isColliding(playerX, playerY, pw, ph, px, py, pWidth, pHeight)) {
+            if (playerVelY > 0 && playerY + ph - playerVelY <= py + 5) {
+                playerY = py - ph;
                 playerVelY = 0;
-                playerVelX = 0;
-                player.dataset.hitboxWidth = PLAYER_HITBOX_WIDTH;
-                player.dataset.hitboxHeight = PLAYER_HITBOX_HEIGHT;
-                updatePlayerPosition();
+                isOnGround = true;
+            }
         }
+    }
 
+    if (!invincible) {
+        for (let i = 0; i < enemyEls.length && !hitHazard; i++) {
+            const enemy = enemyEls[i];
+            const ex = Number(enemy.style.left.replace("px", ""));
+            const ey = Number(enemy.style.top.replace("px", ""));
+            const ew = Number(enemy.dataset.hitboxWidth);
+            const eh = Number(enemy.dataset.hitboxHeight);
 
-        function updatePlayerPosition() {
-            player.style.left = playerX + 'px';
-            player.style.top = playerY + 'px';
-        }
-
-        function updateEnemies() {
-            document.querySelectorAll('.enemy').forEach(enemy => {
-                let x = parseFloat(enemy.style.left);
-                const minX = parseFloat(enemy.dataset.minx);
-                const maxX = parseFloat(enemy.dataset.maxx);
-                let vx = parseFloat(enemy.dataset.vx);
-
-                x += vx;
-                if (x <= minX || x >= maxX) vx *= -1;
-
-                enemy.style.left = x + 'px';
-                enemy.dataset.vx = vx;
-            });
-        }
-
-                function checkCollisions() {
-                let isOnGround = false;
-
-                const pw = parseFloat(player.dataset.hitboxWidth);
-                const ph = parseFloat(player.dataset.hitboxHeight);
-
-                // PLATFORM collisions
-                document.querySelectorAll('.platform').forEach(platformEl => {
-                        const px = parseFloat(platformEl.style.left);
-                        const py = parseFloat(platformEl.style.top);
-                        const pwPlat = parseFloat(platformEl.dataset.hitboxWidth);
-                        const phPlat = parseFloat(platformEl.dataset.hitboxHeight);
-
-                        if (isColliding(playerX, playerY, pw, ph, px, py, pwPlat, phPlat)) {
-                                if (playerVelY > 0 && playerY + ph - playerVelY <= py + 5) {
-                                        playerY = py - ph;
-                                        playerVelY = 0;
-                                        isOnGround = true;
-                                }
-                        }
-                });
-
-                // ENEMY collisions
-                document.querySelectorAll('.enemy').forEach(enemyEl => {
-                        const ex = parseFloat(enemyEl.style.left);
-                        const ey = parseFloat(enemyEl.style.top);
-                        const ew = parseFloat(enemyEl.dataset.hitboxWidth);
-                        const eh = parseFloat(enemyEl.dataset.hitboxHeight);
-
-                        if (isColliding(playerX, playerY, pw, ph, ex, ey, ew, eh)) playerDeath();
-                });
-
-                // SPIKE collisions
-                document.querySelectorAll('.spike').forEach(spikeEl => {
-                        const sx = parseFloat(spikeEl.style.left);
-                        const sy = parseFloat(spikeEl.style.top);
-                        const sw = parseFloat(spikeEl.dataset.hitboxWidth);
-                        const sh = parseFloat(spikeEl.dataset.hitboxHeight);
-
-                        if (isColliding(playerX, playerY, pw, ph, sx, sy, sw, sh)) playerDeath();
-                });
-
-                // GOAL collision
-                const goal = document.querySelector('.goal');
-                const gx = parseFloat(goal.style.left);
-                const gy = parseFloat(goal.style.top);
-                const gw = parseFloat(goal.dataset.hitboxWidth);
-                const gh = parseFloat(goal.dataset.hitboxHeight);
-
-                if (isColliding(playerX, playerY, pw, ph, gx, gy, gw, gh)) levelComplete();
-
-                return isOnGround;
-        }
-
-        function playerDeath() {
-            if(invincible) return; // skip death if invincible
-            lives--;
-            uiLives.textContent = lives;
-            if(lives <= 0) {
-                gameActive = false;
-                showGameOver('Game Over!', 'You ran out of lives!');
-                if (lives < 0);
-                    lives = 0;
-            } else {
-                loadLevel(currentLevel);
+            if (isColliding(playerX, playerY, pw, ph, ex, ey, ew, eh)) {
+                hitHazard = true;
             }
         }
 
-        function levelComplete() {
-            if (currentLevel < maxLevels) {
-                currentLevel++;
-                loadLevel(currentLevel);
-                player.classList.add('fade-in');
-            } else {
-                gameActive = false;
-                showGameOver('You Won!', 'Congratulations! You completed all 20 levels!');
+        for (let i = 0; i < spikeEls.length && !hitHazard; i++) {
+            const spike = spikeEls[i];
+            const sx = Number(spike.style.left.replace("px", ""));
+            const sy = Number(spike.style.top.replace("px", ""));
+            const sw = Number(spike.dataset.hitboxWidth);
+            const sh = Number(spike.dataset.hitboxHeight);
+
+            if (isColliding(playerX, playerY, pw, ph, sx, sy, sw, sh)) {
+                hitHazard = true;
             }
         }
+    }
 
-        /* GET DOWN MR PRESIDENT
-        function updateShellers() {
-            document.querySelectorAll('.sheller').forEach(sheller => {
-                let cooldown = Number(sheller.dataset.cooldown);
-                cooldown--;
+    if (goalEl) {
+        const gx = Number(goalEl.style.left.replace("px", ""));
+        const gy = Number(goalEl.style.top.replace("px", ""));
+        const gw = Number(goalEl.dataset.hitboxWidth);
+        const gh = Number(goalEl.dataset.hitboxHeight);
+        hitGoal = isColliding(playerX, playerY, pw, ph, gx, gy, gw, gh);
+    }
 
-                if (cooldown <= 0) {
-                    fireShell(sheller);
-                    cooldown = 120; // frames between shots (~2s at 60fps)
-                }
+    return { isOnGround, hitHazard, hitGoal };
+}
 
-                sheller.dataset.cooldown = cooldown;
-            });
-        }
-        
-        function fireShell(sheller) {
-            const shell = document.createElement('div');
-            shell.className = 'shell';
+function playerDeath() {
+    if (invincible) return;
 
-            const x = parseFloat(sheller.style.left) + 18;
-            const y = parseFloat(sheller.style.top) + 18;
+    lives -= 1;
+    if (lives < 0) {
+        lives = 0;
+    }
+    uiLives.textContent = String(lives);
 
-            shell.style.left = x + 'px';
-            shell.style.top = y + 'px';
-            shell.dataset.vx = 4 * Number(sheller.dataset.dir);
+    if (lives <= 0) {
+        gameActive = false;
+        showGameOver("Game Over!", "You ran out of lives!");
+    } else {
+        loadLevel(currentLevel);
+    }
+}
 
-            gameContainer.appendChild(shell);
-        }
-        
-        function updateShells() {
-            document.querySelectorAll('.shell').forEach(shell => {
-                let x = parseFloat(shell.style.left);
-                const vx = Number(shell.dataset.vx);
+function levelComplete() {
+    if (currentLevel < maxLevels) {
+        currentLevel += 1;
+        loadLevel(currentLevel);
+        player.classList.add("fade-in");
+        setTimeout(() => player.classList.remove("fade-in"), 500);
+    } else {
+        gameActive = false;
+        showGameOver("You Won!", "Congratulations! You completed all levels!");
+    }
+}
 
-                x += vx;
-                shell.style.left = x + 'px';
+function updatePlayerAnimation(isOnGround) {
+    const movingLeft = playerVelX < 0;
+    const movingRight = playerVelX > 0;
+    const jumping = playerVelY < 0;
+    const falling = playerVelY > 0 && !isOnGround;
 
-                // collision with player
-                const sw = 10, sh = 10;
-                const pw = PLAYER_HITBOX_WIDTH, ph = PLAYER_HITBOX_HEIGHT;
+    if (jumping || falling) {
+        player.style.backgroundImage = 'url("assets/player_jump.gif")';
+    } else if (movingLeft) {
+        player.style.backgroundImage = 'url("assets/player_left.gif")';
+    } else if (movingRight) {
+        player.style.backgroundImage = 'url("assets/player_right.gif")';
+    } else {
+        player.style.backgroundImage = 'url("assets/player_idle.gif")';
+    }
+}
 
-                if (isColliding(x, parseFloat(shell.style.top), sw, sh,
-                                playerX, playerY, pw, ph)) {
-                    shell.remove();
-                    playerDeath();
-                }
+function showGameOver(title, text) {
+    document.getElementById("gameOverTitle").textContent = title;
+    document.getElementById("gameOverText").textContent = text;
+    gameOverDiv.style.display = "block";
+    setPaused(false);
+}
 
-                // cleanup offscreen
-                if (x < -20 || x > 820) shell.remove();
-            });
-        }
-        */
-        
-        const devMenu = document.getElementById('devMenu');
-        let invincible = false;
+function hideGameOver() {
+    gameOverDiv.style.display = "none";
+}
 
-        const konamiCode = ['ArrowUp','ArrowUp','ArrowDown','ArrowDown','ArrowLeft','ArrowRight','ArrowLeft','ArrowRight','b','a'];
-        let konamiIndex = 0;
+function setPaused(nextPaused) {
+    paused = Boolean(nextPaused);
+    if (!gameStarted || !gameActive) {
+        paused = false;
+    }
+    pauseOverlay.style.display = paused ? "flex" : "none";
+}
 
-        window.addEventListener('keydown', (e) => {
-            if(e.key === konamiCode[konamiIndex]) {
-                konamiIndex++;
-                if(konamiIndex === konamiCode.length) {
-                    devMenu.style.display = 'block';
-                    console.log('Dev Menu Activated!');
-                    konamiIndex = 0;
-                }
-            } else {
-                konamiIndex = 0;
+function toggleSettingsPanel(forceOpen) {
+    const currentlyOpen = settingsPanel.style.display === "flex";
+    const shouldOpen = typeof forceOpen === "boolean" ? forceOpen : !currentlyOpen;
+    settingsPanel.style.display = shouldOpen ? "flex" : "none";
+}
+
+function updateSettingsText() {
+    document.getElementById("musicValue").textContent = `${Math.round(musicVolume * 100)}%`;
+    document.getElementById("sfxValue").textContent = `${Math.round(sfxVolume * 100)}%`;
+}
+
+function canUseJumpThisFrame() {
+    return coyoteTimer > 0 && jumpBufferTimer > 0;
+}
+
+function readAndAppendCustomLevels(file) {
+    const reader = new FileReader();
+    reader.onload = () => {
+        try {
+            const parsed = JSON.parse(String(reader.result));
+            const maybeList = Array.isArray(parsed) ? parsed : [parsed];
+
+            if (!window.LevelSchema) {
+                throw new Error("Level schema utilities are not loaded.");
             }
-        });
 
-        function updatePlayerAnimation() {
-            let movingLeft = playerVelX < 0;
-            let movingRight = playerVelX > 0;
-            let jumping = playerVelY < 0;
-            let falling = playerVelY > 0 && !checkCollisions(); // optional: only falling if not on ground
-
-            if (jumping) {
-                player.style.backgroundImage = 'url("assets/player_jump.gif")';
-            } else if (falling) {
-                player.style.backgroundImage = 'url("assets/player_jump.gif")';
-            } else if (movingLeft){
-                player.style.backgroundImage = 'url("assets/player_left.gif")';
-            } else if (movingRight){
-                player.style.backgroundImage = 'url("assets/player_right.gif")';
-            } else {
-                player.style.backgroundImage = 'url("assets/player_idle.gif")';
-            }
-        }
-
-        window.onload = () => {
-            document.getElementById('skipLevelBtn').addEventListener('click', () => {
-                if(currentLevel < maxLevels) loadLevel(currentLevel + 1);
-            });
-
-            document.getElementById('addLifeBtn').addEventListener('click', () => {
-                lives++;
-                uiLives.textContent = lives;
-            });
-
-            document.getElementById('toggleInvincibleBtn').addEventListener('click', () => {
-                invincible = !invincible;
-                if (invincible){
-                    player.style.background = '#4CD1FF';
-                } else {
-                    player.style.background = '#FF6B6B'; 
+            const normalized = [];
+            for (let i = 0; i < maybeList.length; i++) {
+                const validation = window.LevelSchema.validateLevel(maybeList[i]);
+                if (!validation.valid) {
+                    throw new Error(`Custom level ${i + 1} is invalid: ${validation.errors.join("; ")}`);
                 }
-                console.log('Invincible mode:', invincible);
-            });
+                normalized.push(window.LevelSchema.normalizeLevel(maybeList[i]));
+            }
 
-            const mainMenu = document.getElementById('mainMenu');
-            const startGameBtn = document.getElementById('startGameBtn');
-            startGameBtn.addEventListener('click', () => {
-                mainMenu.style.display = 'none';
-                gameStarted = true;
-                gameActive = true;
-                lives = 3;
-                uiLives.textContent = lives;
-                loadLevel(1);
+            normalized.forEach((lvl) => levels.push(lvl));
+            loadedCustomLevelCount = normalized.length;
+            syncMaxLevelUI();
+            alert(`Loaded ${normalized.length} custom level(s). Use the Custom Levels button to play them.`);
+        } catch (error) {
+            alert(`Invalid custom level file: ${error.message}`);
+        }
+    };
+    reader.readAsText(file);
+}
 
-            document.getElementById('restartBtn').addEventListener('click', () => {
-                location.reload();
-            });
+function startNewRun(startLevel) {
+    hideGameOver();
+    gameStarted = true;
+    gameActive = true;
+    setPaused(false);
+    toggleSettingsPanel(false);
+    mainMenu.style.display = "none";
+    lives = 3;
+    uiLives.textContent = String(lives);
+    loadLevel(startLevel);
+}
 
+function bindTouchControls() {
+    document.querySelectorAll("[data-touch-key]").forEach((button) => {
+        const key = button.getAttribute("data-touch-key");
+        if (!key) return;
 
-                /*
-                
-                !!!!!! NOTE: CUSTOM LEVEL LOADING DISABLED FOR NOW. BROKEN. GOING TO SLEEP. !!!!!!
-
-                document.getElementById('loadCustomBtn').onclick = () => {
-                const fileInput = document.getElementById('levelUpload');
-                const file = fileInput.files[0];
-                if (!file) return alert("NO FILE. CAVEMAN SAD.");
-
-                const reader = new FileReader();
-                reader.onload = () => {
-                        try {
-                                customLevel = JSON.parse(reader.result);
-                                levels.push(customLevel);
-                                maxLevels = levels.length;
-                                loadLevel(levels.length);
-                                gameStarted = true;
-                                gameActive = true;
-                                document.getElementById('mainMenu').style.display = 'none';
-                        } catch {
-                                alert("FILE BAD. JSON ANGRY.");
-                        }
-                };
-                reader.readAsText(file);
-                };
-                */
-
-            });
+        const down = (event) => {
+            event.preventDefault();
+            setTouchKey(key, true);
         };
 
-        function showGameOver(title, text) {
-            document.getElementById('gameOverTitle').textContent = title;
-            document.getElementById('gameOverText').textContent = text;
-            gameOverDiv.style.display = 'block';
+        const up = (event) => {
+            event.preventDefault();
+            setTouchKey(key, false);
+        };
+
+        button.addEventListener("pointerdown", down);
+        button.addEventListener("pointerup", up);
+        button.addEventListener("pointercancel", up);
+        button.addEventListener("pointerleave", up);
+    });
+}
+
+function bindUI() {
+    document.getElementById("skipLevelBtn").addEventListener("click", () => {
+        if (currentLevel < maxLevels) {
+            loadLevel(currentLevel + 1);
+        }
+    });
+
+    document.getElementById("addLifeBtn").addEventListener("click", () => {
+        lives += 1;
+        uiLives.textContent = String(lives);
+    });
+
+    document.getElementById("toggleInvincibleBtn").addEventListener("click", () => {
+        invincible = !invincible;
+        player.style.outline = invincible ? "2px solid #4CD1FF" : "none";
+    });
+
+    document.getElementById("startGameBtn").addEventListener("click", () => {
+        startNewRun(1);
+    });
+
+    document.getElementById("customLevelBtn").addEventListener("click", () => {
+        if (!levelUploadInput.files || levelUploadInput.files.length === 0) {
+            alert("Choose a .json file first.");
+            return;
         }
 
-        function update() {
-            if (!gameActive || !gameStarted) return;
-
-            // Player movement
-            playerVelX = 0;
-            if (keys['ArrowLeft'] || keys['a']) playerVelX = -MOVE_SPEED;
-            if (keys['ArrowRight'] || keys['d']) playerVelX = MOVE_SPEED;
-
-            playerX += playerVelX;
-
-            // Keep player in bounds horizontally
-            if (playerX < 0) playerX = 0;
-            if (playerX + 30 > 800) playerX = 770;
-
-            // Apply gravity
-            playerVelY += GRAVITY;
-            playerY += playerVelY;
-
-            // Keep player in bounds vertically
-            if (playerY + 40 > 600) {
-                playerDeath();
-                return;
-            }
-
-            // Check collisions and get ground status
-            let isOnGround = checkCollisions();
-
-            // Jumping
-            if ((keys['ArrowUp'] || keys['w'] || keys[' ']) && isOnGround) {
-                playerVelY = JUMP_STRENGTH;
-                isOnGround = false;
-            }
-
-            // GET DOWN MR PRESIDENT
-            //updateShellers();
-            //updateShells();
-
-
-            updateEnemies();
-            updatePlayerPosition();
+        if (loadedCustomLevelCount === 0) {
+            readAndAppendCustomLevels(levelUploadInput.files[0]);
+            return;
         }
 
-        function gameLoop() {
-            update();
-            requestAnimationFrame(gameLoop);
-            updatePlayerAnimation();
-        }
+        const customStart = maxLevels - loadedCustomLevelCount + 1;
+        startNewRun(customStart);
+    });
 
-        // Initialize
-        //loadLevel(1);
-        gameLoop();
+    levelUploadInput.addEventListener("change", () => {
+        loadedCustomLevelCount = 0;
+    });
+
+    document.getElementById("restartBtn").addEventListener("click", () => {
+        startNewRun(1);
+    });
+
+    document.getElementById("pauseRestartBtn").addEventListener("click", () => {
+        startNewRun(1);
+    });
+
+    document.getElementById("pauseBtn").addEventListener("click", () => {
+        if (gameStarted && gameActive) {
+            setPaused(!paused);
+        }
+    });
+
+    document.getElementById("resumeBtn").addEventListener("click", () => {
+        setPaused(false);
+    });
+
+    document.getElementById("settingsBtn").addEventListener("click", () => {
+        toggleSettingsPanel();
+    });
+
+    document.getElementById("closeSettingsBtn").addEventListener("click", () => {
+        toggleSettingsPanel(false);
+    });
+
+    document.getElementById("musicSlider").addEventListener("input", (event) => {
+        musicVolume = Number(event.target.value) / 100;
+        updateSettingsText();
+    });
+
+    document.getElementById("sfxSlider").addEventListener("input", (event) => {
+        sfxVolume = Number(event.target.value) / 100;
+        updateSettingsText();
+    });
+
+    bindTouchControls();
+    updateSettingsText();
+}
+
+window.addEventListener("keydown", (event) => {
+    keys[event.key] = true;
+    if (event.key === " ") {
+        event.preventDefault();
+    }
+
+    if (event.key === "Escape" || event.key.toLowerCase() === "p") {
+        if (gameStarted && gameActive) {
+            setPaused(!paused);
+        }
+    }
+
+    if (event.key === konamiCode[konamiIndex]) {
+        konamiIndex += 1;
+        if (konamiIndex === konamiCode.length) {
+            devMenu.style.display = "block";
+            konamiIndex = 0;
+        }
+    } else {
+        konamiIndex = 0;
+    }
+});
+
+window.addEventListener("keyup", (event) => {
+    keys[event.key] = false;
+});
+
+window.addEventListener("resize", fitGameToViewport);
+
+function update() {
+    if (!gameActive || !gameStarted || paused) {
+        return;
+    }
+
+    playerVelX = 0;
+    if (isLeftPressed()) playerVelX = -MOVE_SPEED;
+    if (isRightPressed()) playerVelX = MOVE_SPEED;
+
+    playerX += playerVelX;
+    if (playerX < 0) playerX = 0;
+    const playerWidth = getPlayerWidth();
+    if (playerX + playerWidth > WORLD_WIDTH) {
+        playerX = WORLD_WIDTH - playerWidth;
+    }
+
+    const jumpHeld = isJumpPressed();
+    if (jumpHeld) {
+        jumpBufferTimer = JUMP_BUFFER_FRAMES;
+    } else {
+        jumpBufferTimer = Math.max(0, jumpBufferTimer - 1);
+    }
+
+    if (wasJumpHeld && !jumpHeld && playerVelY < 0) {
+        playerVelY *= JUMP_CUTOFF_MULTIPLIER;
+    }
+    wasJumpHeld = jumpHeld;
+
+    playerVelY += GRAVITY;
+    playerY += playerVelY;
+
+    if (playerY + getPlayerHeight() > WORLD_HEIGHT) {
+        playerDeath();
+        return;
+    }
+
+    const collision = checkCollisions();
+
+    if (collision.isOnGround) {
+        coyoteTimer = COYOTE_FRAMES;
+    } else {
+        coyoteTimer = Math.max(0, coyoteTimer - 1);
+    }
+
+    if (canUseJumpThisFrame()) {
+        playerVelY = JUMP_STRENGTH;
+        coyoteTimer = 0;
+        jumpBufferTimer = 0;
+    }
+
+    if (collision.hitHazard) {
+        playerDeath();
+        return;
+    }
+
+    if (collision.hitGoal) {
+        levelComplete();
+        return;
+    }
+
+    updateEnemies();
+    updatePlayerPosition();
+    updatePlayerAnimation(collision.isOnGround);
+}
+
+function gameLoop() {
+    update();
+    requestAnimationFrame(gameLoop);
+}
+
+normalizeRuntimeLevels();
+syncMaxLevelUI();
+bindUI();
+fitGameToViewport();
+gameLoop();
