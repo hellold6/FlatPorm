@@ -47,6 +47,21 @@
         };
     }
 
+    function normalizeShellshot(item) {
+        const x = toNumber(item && item.x, 100);
+
+        return {
+            x,
+            y: toNumber(item && item.y, 100),
+            dir: toNumber(item && item.dir, 1),
+            scamperMinX: toNumber(item && item.scamperMinX, x - 80),
+            scamperMaxX: toNumber(item && item.scamperMaxX, x + 80),
+            cooldown: toNumber(item && item.cooldown, 0),
+            hitboxW: toNumber(item && item.hitboxW, 32),
+            hitboxH: toNumber(item && item.hitboxH, 32)
+        };
+    }
+
     function normalizeLevel(level) {
         const src = level || {};
 
@@ -54,6 +69,7 @@
             platforms: Array.isArray(src.platforms) ? src.platforms.map(normalizePlatform) : [],
             enemies: Array.isArray(src.enemies) ? src.enemies.map(normalizeEnemy) : [],
             spikes: Array.isArray(src.spikes) ? src.spikes.map(normalizeSpike) : [],
+            shellshots: Array.isArray(src.shellshots) ? src.shellshots.map(normalizeShellshot) : [],
             goalX: toNumber(src.goalX, 700),
             goalY: toNumber(src.goalY, 350),
             goalW: toNumber(src.goalW, 42),
@@ -87,6 +103,10 @@
 
         if (!Array.isArray(level.spikes)) {
             errors.push("spikes must be an array");
+        }
+
+        if (level.shellshots != null && !Array.isArray(level.shellshots)) {
+            errors.push("shellshots must be an array when present");
         }
 
         if (!isFiniteNumber(toNumber(level.goalX, NaN))) {
@@ -131,6 +151,17 @@
                 fields.forEach(function (field) {
                     if (!isFiniteNumber(toNumber(spike && spike[field], NaN))) {
                         errors.push("spike " + (index + 1) + " is missing numeric " + field);
+                    }
+                });
+            });
+        }
+
+        if (Array.isArray(level.shellshots)) {
+            level.shellshots.forEach(function (shellshot, index) {
+                const fields = ["x", "y"];
+                fields.forEach(function (field) {
+                    if (!isFiniteNumber(toNumber(shellshot && shellshot[field], NaN))) {
+                        errors.push("shellshot " + (index + 1) + " is missing numeric " + field);
                     }
                 });
             });

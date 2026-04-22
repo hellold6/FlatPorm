@@ -1,8 +1,10 @@
 const gameContainer = document.getElementById("gameContainer");
 const player = document.getElementById("player");
+const playerShadow = document.getElementById("playerShadow");
 const uiLevel = document.getElementById("levelNum");
 const uiLives = document.getElementById("lives");
 const uiMaxLevel = document.getElementById("maxLevelNum");
+const levelFill = document.getElementById("levelFill");
 const gameOverDiv = document.getElementById("gameOver");
 const mainMenu = document.getElementById("mainMenu");
 const pauseOverlay = document.getElementById("pauseOverlay");
@@ -20,6 +22,10 @@ const SPIKE_HITBOX_WIDTH = 40;
 const SPIKE_HITBOX_HEIGHT = 37;
 const GOAL_HITBOX_WIDTH = 42;
 const GOAL_HITBOX_HEIGHT = 41;
+const SHELLSHOT_HITBOX_WIDTH = 32;
+const SHELLSHOT_HITBOX_HEIGHT = 32;
+const SHELLSHOT_PROJECTILE_WIDTH = 8;
+const SHELLSHOT_PROJECTILE_HEIGHT = 8;
 
 const GRAVITY = 0.6;
 const JUMP_STRENGTH = -12;
@@ -58,6 +64,8 @@ const touchKeys = {
 let platformEls = [];
 let enemyEls = [];
 let spikeEls = [];
+let shellshotEls = [];
+let shellshotShellEls = [];
 let goalEl = null;
 
 const devMenu = document.getElementById("devMenu");
@@ -86,6 +94,39 @@ function getPlayerHeight() {
     return Number(player.dataset.hitboxHeight || PLAYER_HITBOX_HEIGHT);
 }
 
+function syncScenePresentation() {
+    const playerWidth = getPlayerWidth();
+    const playerHeight = getPlayerHeight();
+    const centerX = playerX + playerWidth / 2;
+    const centerY = playerY + playerHeight / 2;
+    const levelRatio = maxLevels > 1 ? (currentLevel - 1) / (maxLevels - 1) : 0;
+    const stageHue = Math.round(224 - levelRatio * 130);
+    const accentHue = Math.round(166 - levelRatio * 86);
+
+    gameContainer.style.setProperty("--player-x", `${centerX}px`);
+    gameContainer.style.setProperty("--player-y", `${centerY}px`);
+    gameContainer.style.setProperty("--backdrop-shift", `${playerX * -0.08}px`);
+    gameContainer.style.setProperty("--stage-hue", String(stageHue));
+    gameContainer.style.setProperty("--accent-hue", String(accentHue));
+
+    if (levelFill) {
+        const progress = maxLevels > 0 ? Math.max(0.04, currentLevel / maxLevels) : 0.04;
+        levelFill.style.width = `${progress * 100}%`;
+    }
+
+    if (playerShadow) {
+        const floorDistance = Math.max(0, WORLD_HEIGHT - (playerY + playerHeight));
+        const airRatio = Math.min(floorDistance / 220, 1);
+        const scale = 1 - airRatio * 0.45;
+        const opacity = 0.3 - airRatio * 0.18;
+
+        playerShadow.style.left = `${playerX - 7}px`;
+        playerShadow.style.top = `${Math.min(WORLD_HEIGHT - 16, playerY + playerHeight + 8)}px`;
+        playerShadow.style.transform = `scale(${scale})`;
+        playerShadow.style.opacity = `${Math.max(0.08, opacity)}`;
+    }
+}
+
 function setTouchButtonActiveState(key, active) {
     const button = document.querySelector(`[data-touch-key="${key}"]`);
     if (!button) return;
@@ -110,10 +151,12 @@ function isJumpPressed() {
 }
 
 function clearWorldObjects() {
-    gameContainer.querySelectorAll(".platform, .enemy, .spike, .goal").forEach((el) => el.remove());
+    gameContainer.querySelectorAll(".platform, .enemy, .spike, .goal, .shellshot, .shellshot-shell").forEach((el) => el.remove());
     platformEls = [];
     enemyEls = [];
     spikeEls = [];
+    shellshotEls = [];
+    shellshotShellEls = [];
     goalEl = null;
 }
 
@@ -179,6 +222,22 @@ function loadLevel(levelNum) {
         gameContainer.appendChild(enemyEl);
     });
 
+    level.shellshots?.forEach((shellshot) => {
+        const shellshotEl = document.createElement("div");
+        shellshotEl.className = "shellshot";
+        shellshotEl.style.left = `${shellshot.x}px`;
+        shellshotEl.style.top = `${shellshot.y}px`;
+        shellshotEl.dataset.dir = String(shellshot.dir || 1);
+        shellshotEl.dataset.scamperMinX = String(shellshot.scamperMinX ?? (shellshot.x - 80));
+        shellshotEl.dataset.scamperMaxX = String(shellshot.scamperMaxX ?? (shellshot.x + 80));
+        shellshotEl.dataset.cooldown = String(shellshot.cooldown ?? 0);
+        shellshotEl.dataset.vx = "0";
+        shellshotEl.dataset.hitboxWidth = String(shellshot.hitboxW || SHELLSHOT_HITBOX_WIDTH);
+        shellshotEl.dataset.hitboxHeight = String(shellshot.hitboxH || SHELLSHOT_HITBOX_HEIGHT);
+        shellshotEls.push(shellshotEl);
+        gameContainer.appendChild(shellshotEl);
+    });
+
     level.spikes.forEach((spike) => {
         const spikeEl = document.createElement("div");
         spikeEl.className = "spike";
@@ -219,6 +278,7 @@ function loadLevel(levelNum) {
 function updatePlayerPosition() {
     player.style.left = `${playerX}px`;
     player.style.top = `${playerY}px`;
+    syncScenePresentation();
 }
 
 function updateEnemies() {
@@ -238,6 +298,86 @@ function updateEnemies() {
         enemy.style.left = `${x}px`;
         enemy.dataset.vx = String(vx);
     }
+}
+
+function updateShellshots() {
+    for (let index = 0; index < shellshotEls.length; index += 1) {
+        const shellshot = shellshotEls[index];
+        const shellshotX = Number(shellshot.style.left.replace("px", ""));
+        const minX = Number(shellshot.dataset.scamperMinX);
+        const maxX = Number(shellshot.dataset.scamperMaxX);
+        let velocityX = Number(shellshot.dataset.vx);
+        let direction = Number(shellshot.dataset.dir);
+
+        if (playerX < shellshotX - 50) {
+            velocityX = 2;
+            direction = 1;
+        } else if (playerX > shellshotX + 50) {
+            velocityX = -2;
+            direction = -1;
+        } else {
+            velocityX = 0;
+        }
+
+        let newX = shellshotX + velocityX;
+        if (newX < minX) newX = minX;
+        if (newX > maxX) newX = maxX;
+        shellshot.style.left = `${newX}px`;
+
+        shellshot.dataset.vx = String(velocityX);
+        shellshot.dataset.dir = String(direction);
+
+        let cooldown = Number(shellshot.dataset.cooldown) - 1;
+        if (cooldown <= 0) {
+            fireShellshotProjectile(shellshot);
+            cooldown = 90;
+        }
+
+        shellshot.dataset.cooldown = String(cooldown);
+    }
+}
+
+function fireShellshotProjectile(shellshot) {
+    const shell = document.createElement("div");
+    shell.className = "shellshot-shell";
+
+    const x = Number(shellshot.style.left.replace("px", "")) + 18;
+    const y = Number(shellshot.style.top.replace("px", "")) + 15;
+
+    shell.style.left = `${x}px`;
+    shell.style.top = `${y}px`;
+    shell.dataset.vx = String(5 * Number(shellshot.dataset.dir));
+    shellshotShellEls.push(shell);
+    gameContainer.appendChild(shell);
+}
+
+function updateShellshotProjectiles() {
+    const remainingProjectiles = [];
+
+    for (let index = 0; index < shellshotShellEls.length; index += 1) {
+        const shell = shellshotShellEls[index];
+        let x = Number(shell.style.left.replace("px", ""));
+        const y = Number(shell.style.top.replace("px", ""));
+        const velocityX = Number(shell.dataset.vx);
+
+        x += velocityX;
+        shell.style.left = `${x}px`;
+
+        if (isColliding(x, y, SHELLSHOT_PROJECTILE_WIDTH, SHELLSHOT_PROJECTILE_HEIGHT, playerX, playerY, getPlayerWidth(), getPlayerHeight())) {
+            shell.remove();
+            playerDeath();
+            continue;
+        }
+
+        if (x < -20 || x > WORLD_WIDTH + 20) {
+            shell.remove();
+            continue;
+        }
+
+        remainingProjectiles.push(shell);
+    }
+
+    shellshotShellEls = remainingProjectiles;
 }
 
 function checkCollisions() {
@@ -273,6 +413,18 @@ function checkCollisions() {
             const eh = Number(enemy.dataset.hitboxHeight);
 
             if (isColliding(playerX, playerY, pw, ph, ex, ey, ew, eh)) {
+                hitHazard = true;
+            }
+        }
+
+        for (let index = 0; index < shellshotEls.length && !hitHazard; index += 1) {
+            const shellshot = shellshotEls[index];
+            const sx = Number(shellshot.style.left.replace("px", ""));
+            const sy = Number(shellshot.style.top.replace("px", ""));
+            const sw = Number(shellshot.dataset.hitboxWidth);
+            const sh = Number(shellshot.dataset.hitboxHeight);
+
+            if (isColliding(playerX, playerY, pw, ph, sx, sy, sw, sh)) {
                 hitHazard = true;
             }
         }
@@ -616,6 +768,8 @@ function update() {
         return;
     }
 
+    updateShellshots();
+    updateShellshotProjectiles();
     updateEnemies();
     updatePlayerPosition();
     updatePlayerAnimation(collision.isOnGround);
