@@ -1,4 +1,5 @@
 const gameContainer = document.getElementById("gameContainer");
+const gameWorld = document.getElementById("gameWorld");
 const player = document.getElementById("player");
 const playerShadow = document.getElementById("playerShadow");
 const uiLevel = document.getElementById("levelNum");
@@ -177,7 +178,7 @@ function isJumpPressed() {
 }
 
 function clearWorldObjects() {
-    gameContainer.querySelectorAll(".platform, .enemy, .spike, .goal, .shellshot, .shellshot-shell").forEach((el) => el.remove());
+    gameWorld.querySelectorAll(".platform, .enemy, .spike, .goal, .shellshot, .shellshot-shell").forEach((el) => el.remove());
     platformEls = [];
     enemyEls = [];
     spikeEls = [];
@@ -231,7 +232,7 @@ function loadLevel(levelNum) {
         platformEl.dataset.hitboxWidth = String(platform.w);
         platformEl.dataset.hitboxHeight = String(platform.h);
         platformEls.push(platformEl);
-        gameContainer.appendChild(platformEl);
+        gameWorld.appendChild(platformEl);
     });
 
     level.enemies.forEach((enemy) => {
@@ -245,7 +246,7 @@ function loadLevel(levelNum) {
         enemyEl.dataset.hitboxWidth = String(enemy.hitboxW || ENEMY_HITBOX_WIDTH);
         enemyEl.dataset.hitboxHeight = String(enemy.hitboxH || ENEMY_HITBOX_HEIGHT);
         enemyEls.push(enemyEl);
-        gameContainer.appendChild(enemyEl);
+        gameWorld.appendChild(enemyEl);
     });
 
     level.shellshots?.forEach((shellshot) => {
@@ -261,7 +262,7 @@ function loadLevel(levelNum) {
         shellshotEl.dataset.hitboxWidth = String(shellshot.hitboxW || SHELLSHOT_HITBOX_WIDTH);
         shellshotEl.dataset.hitboxHeight = String(shellshot.hitboxH || SHELLSHOT_HITBOX_HEIGHT);
         shellshotEls.push(shellshotEl);
-        gameContainer.appendChild(shellshotEl);
+        gameWorld.appendChild(shellshotEl);
     });
 
     level.spikes.forEach((spike) => {
@@ -279,7 +280,7 @@ function loadLevel(levelNum) {
         spikeEl.dataset.hitboxWidth = String(spike.hitboxW || SPIKE_HITBOX_WIDTH);
         spikeEl.dataset.hitboxHeight = String(spike.hitboxH || SPIKE_HITBOX_HEIGHT);
         spikeEls.push(spikeEl);
-        gameContainer.appendChild(spikeEl);
+        gameWorld.appendChild(spikeEl);
     });
 
     goalEl = document.createElement("div");
@@ -288,7 +289,7 @@ function loadLevel(levelNum) {
     goalEl.style.top = `${level.goalY}px`;
     goalEl.dataset.hitboxWidth = String(level.goalW || GOAL_HITBOX_WIDTH);
     goalEl.dataset.hitboxHeight = String(level.goalH || GOAL_HITBOX_HEIGHT);
-    gameContainer.appendChild(goalEl);
+    gameWorld.appendChild(goalEl);
 
     playerX = 50;
     playerY = 450;
@@ -378,7 +379,7 @@ function fireShellshotProjectile(shellshot) {
     const shootDir = playerX < shellshotX ? -1 : 1;
     shell.dataset.vx = String(5 * shootDir);
     shellshotShellEls.push(shell);
-    gameContainer.appendChild(shell);
+    gameWorld.appendChild(shell);
 }
 
 function updateShellshotProjectiles() {
