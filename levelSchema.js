@@ -25,12 +25,31 @@
 
     function normalizeEnemy(item) {
         const x = toNumber(item && item.x, 100);
+        const y = toNumber(item && item.y, 100);
+        const type = item && item.type === "floater" ? "floater" : "walker";
+
+        if (type === "floater") {
+            const minY = toNumber(item && item.minY, y - 60);
+            const maxY = toNumber(item && item.maxY, y + 60);
+
+            return {
+                x,
+                y,
+                type: "floater",
+                minY: Math.min(minY, maxY),
+                maxY: Math.max(minY, maxY),
+                hitboxW: toNumber(item && item.hitboxW, 34),
+                hitboxH: toNumber(item && item.hitboxH, 30)
+            };
+        }
+
         const minX = toNumber(item && item.minX, x - 50);
         const maxX = toNumber(item && item.maxX, x + 50);
 
         return {
             x,
-            y: toNumber(item && item.y, 100),
+            y,
+            type: "walker",
             minX: Math.min(minX, maxX),
             maxX: Math.max(minX, maxX),
             hitboxW: toNumber(item && item.hitboxW, 34),
@@ -136,7 +155,9 @@
 
         if (Array.isArray(level.enemies)) {
             level.enemies.forEach(function (enemy, index) {
-                const fields = ["x", "y", "minX", "maxX"];
+                const fields = enemy && enemy.type === "floater"
+                    ? ["x", "y", "minY", "maxY"]
+                    : ["x", "y", "minX", "maxX"];
                 fields.forEach(function (field) {
                     if (!isFiniteNumber(toNumber(enemy && enemy[field], NaN))) {
                         errors.push("enemy " + (index + 1) + " is missing numeric " + field);
