@@ -548,8 +548,14 @@ function updatePlayerAnimation(isOnGround) {
     const jumping = playerVelY < 0;
     const falling = playerVelY > 0 && !isOnGround;
 
-    if (jumping || falling) {
-        player.style.backgroundImage = 'url("assets/player_jump.gif")';
+    if (jumping) {
+        if (movingLeft) {
+            player.style.backgroundImage = 'url("assets/player_jump_left.gif")';
+        } else if (movingRight) {
+            player.style.backgroundImage = 'url("assets/player_jump_right.gif")';
+        } else {
+            player.style.backgroundImage = 'url("assets/player_jump_vert.gif")';
+        }
     } else if (movingLeft) {
         player.style.backgroundImage = 'url("assets/player_left.gif")';
     } else if (movingRight) {
