@@ -31,6 +31,11 @@
             box-sizing: border-box;
         }
 
+        button {
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+        }
+
         html,
         body {
             width: 100%;
@@ -639,6 +644,9 @@
             font-size: 22px;
             font-weight: 700;
             box-shadow: 0 12px 30px rgba(0, 0, 0, 0.3);
+            touch-action: none;
+            cursor: pointer;
+            user-select: none;
         }
 
         .touch-btn:active,
