@@ -181,7 +181,7 @@
 
         #mainMenu h1 {
             font-family: "Orbitron", Impact, "Arial Narrow Bold", sans-serif;
-            font-size: 74px;
+            font-size: 48px;
             line-height: 0.9;
             letter-spacing: 0.03em;
             margin-bottom: 18px;
@@ -277,7 +277,7 @@
             top: 24px;
             z-index: 100;
             image-rendering: pixelated;
-            filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.34)) drop-shadow(0 0 12px rgba(117, 255, 215, 0.18));
+            filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.34)) drop-shadow(0 0 12px rgba(255, 60, 60, 0.5));
         }
 
         .platform {
@@ -317,17 +317,17 @@
             border-radius: 50%;
             z-index: 50;
             image-rendering: pixelated;
-            filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.34)) drop-shadow(0 0 10px rgba(255, 60, 60, 0.32));
+            filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.34)) drop-shadow(0 0 10px rgba(255, 210, 0, 0.6));
             animation: floatPulse 2.6s ease-in-out infinite;
         }
 
         .enemy[data-type="floater"] {
             width: 32px;
             height: 32px;
-            background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.8), rgba(180, 100, 255, 0.6) 40%, rgba(120, 40, 200, 1) 100%);
-            background-image: none;
+            background-image: url("assets/floater.gif");
+            background-size: cover;
+            background-position: center;
             border-radius: 50%;
-            border: 2px solid rgba(150, 80, 200, 0.6);
             filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.34)) drop-shadow(0 0 14px rgba(180, 100, 255, 0.6));
             animation: floatPulse 1.8s ease-in-out infinite;
         }
@@ -365,7 +365,7 @@
         background-position: center;
         z-index: 55;
         image-rendering: pixelated;
-        filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.34));
+        filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.34)) drop-shadow(0 0 12px rgba(60, 120, 255, 0.6));
         animation: floatPulse 2.2s ease-in-out infinite;
     }
 
@@ -733,7 +733,7 @@
                 <div class="menu-card">
                     <div class="menu-kicker">Moonlit Precision Platforming</div>
                     <h1>FlatPorm</h1>
-                    <p class="menu-copy">Pixel-platforming, but staged like a boss fight: glass HUD, glowing horizon, reactive lighting, and a skyline that shifts as you climb through the campaign.</p>
+                    <p class="menu-copy"><strong>How to Play:</strong> Use Arrow Keys or WASD to move left/right and jump. Reach the glowing goal at the end of each level. Avoid enemies and spikes. You have 3 lives—don't lose them all!</p>
                     <button id="startGameBtn">Start Game</button>
                     <div class="upload-wrap">
                         <label class="sr-only" for="levelUpload">Upload Custom Level JSON</label>

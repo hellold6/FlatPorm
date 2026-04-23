@@ -72,6 +72,11 @@ const devMenu = document.getElementById("devMenu");
 const konamiCode = ["ArrowUp", "ArrowUp", "ArrowDown", "ArrowDown", "ArrowLeft", "ArrowRight", "ArrowLeft", "ArrowRight", "b", "a"];
 let konamiIndex = 0;
 
+// Easing function for smooth ease-in-out movement
+function easeInOutSine(progress) {
+    return -(Math.cos(Math.PI * progress) - 1) / 2;
+}
+
 function fitGameToViewport() {
     const scale = Math.min(window.innerWidth / WORLD_WIDTH, window.innerHeight / WORLD_HEIGHT);
     document.documentElement.style.setProperty("--game-scale", String(Math.max(0.45, scale)));
@@ -217,16 +222,26 @@ function loadLevel(levelNum) {
         enemyEl.style.top = `${enemy.y}px`;
         
         if (isFloater) {
-            // Floater enemy configuration (vertical movement)
+            // Floater enemy configuration (vertical movement with easing)
             enemyEl.dataset.type = "floater";
-            enemyEl.dataset.miny = String(enemy.minY ?? (enemy.y - 60));
-            enemyEl.dataset.maxy = String(enemy.maxY ?? (enemy.y + 60));
-            enemyEl.dataset.vy = "1.5";
+            const minY = enemy.minY ?? (enemy.y - 60);
+            const maxY = enemy.maxY ?? (enemy.y + 60);
+            enemyEl.dataset.miny = String(minY);
+            enemyEl.dataset.maxy = String(maxY);
+            enemyEl.dataset.starty = String(minY);
+            enemyEl.dataset.endy = String(maxY);
+            enemyEl.dataset.progress = "0";
+            enemyEl.dataset.cycletime = "120"; // frames for full cycle
         } else {
-            // Walker enemy configuration (horizontal movement)
-            enemyEl.dataset.minx = String(enemy.minX);
-            enemyEl.dataset.maxx = String(enemy.maxX);
-            enemyEl.dataset.vx = "2";
+            // Walker enemy configuration (horizontal movement with easing)
+            const minX = enemy.minX;
+            const maxX = enemy.maxX;
+            enemyEl.dataset.minx = String(minX);
+            enemyEl.dataset.maxx = String(maxX);
+            enemyEl.dataset.startx = String(minX);
+            enemyEl.dataset.endx = String(maxX);
+            enemyEl.dataset.progress = "0";
+            enemyEl.dataset.cycletime = "100"; // frames for full cycle
         }
         
         enemyEl.dataset.hitboxWidth = String(enemy.hitboxW || ENEMY_HITBOX_WIDTH);
@@ -300,35 +315,53 @@ function updateEnemies() {
         const type = enemy.dataset.type || "walker";
         
         if (type === "floater") {
-            // Vertical movement for floater enemies
-            let y = Number(enemy.style.top.replace("px", ""));
-            const minY = Number(enemy.dataset.miny);
-            const maxY = Number(enemy.dataset.maxy);
-            let vy = Number(enemy.dataset.vy);
-
-            y += vy;
-            if (y <= minY || y >= maxY) {
-                vy *= -1;
-                y += vy;
+            // Vertical movement for floater enemies with ease-in-out
+            const startY = Number(enemy.dataset.starty);
+            const endY = Number(enemy.dataset.endy);
+            const cycleTime = Number(enemy.dataset.cycletime);
+            let progress = Number(enemy.dataset.progress);
+            
+            // Update progress (0 to 2, where 0-1 is forward and 1-2 is backward)
+            progress += 1 / (cycleTime / 2);
+            if (progress > 2) {
+                progress -= 2;
             }
-
+            
+            // Calculate eased position
+            let easedProgress;
+            if (progress <= 1) {
+                easedProgress = easeInOutSine(progress);
+            } else {
+                easedProgress = easeInOutSine(2 - progress);
+            }
+            
+            const y = startY + (endY - startY) * easedProgress;
             enemy.style.top = `${y}px`;
-            enemy.dataset.vy = String(vy);
+            enemy.dataset.progress = String(progress);
         } else {
-            // Horizontal movement for walker enemies (default)
-            let x = Number(enemy.style.left.replace("px", ""));
-            const minX = Number(enemy.dataset.minx);
-            const maxX = Number(enemy.dataset.maxx);
-            let vx = Number(enemy.dataset.vx);
-
-            x += vx;
-            if (x <= minX || x >= maxX) {
-                vx *= -1;
-                x += vx;
+            // Horizontal movement for walker enemies with ease-in-out
+            const startX = Number(enemy.dataset.startx);
+            const endX = Number(enemy.dataset.endx);
+            const cycleTime = Number(enemy.dataset.cycletime);
+            let progress = Number(enemy.dataset.progress);
+            
+            // Update progress (0 to 2, where 0-1 is forward and 1-2 is backward)
+            progress += 1 / (cycleTime / 2);
+            if (progress > 2) {
+                progress -= 2;
             }
-
+            
+            // Calculate eased position
+            let easedProgress;
+            if (progress <= 1) {
+                easedProgress = easeInOutSine(progress);
+            } else {
+                easedProgress = easeInOutSine(2 - progress);
+            }
+            
+            const x = startX + (endX - startX) * easedProgress;
             enemy.style.left = `${x}px`;
-            enemy.dataset.vx = String(vx);
+            enemy.dataset.progress = String(progress);
         }
     }
 }
