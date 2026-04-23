@@ -49,6 +49,7 @@
         return {
             x,
             y,
+            type: "walker",
             minX: Math.min(minX, maxX),
             maxX: Math.max(minX, maxX),
             hitboxW: toNumber(item && item.hitboxW, 34),
