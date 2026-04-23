@@ -317,9 +317,14 @@
         }
 
         .enemy[data-type="floater"] {
-            background-image: url("assets/enemy.gif");
-            filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.34)) drop-shadow(0 0 10px rgba(200, 100, 255, 0.5)) hue-rotate(280deg);
-            animation: floatPulse 1.8s ease-in-out infinite, float 3s ease-in-out infinite;
+            width: 32px;
+            height: 32px;
+            background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.8), rgba(180, 100, 255, 0.6) 40%, rgba(120, 40, 200, 1) 100%);
+            background-image: none;
+            border-radius: 50%;
+            border: 2px solid rgba(150, 80, 200, 0.6);
+            filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.34)) drop-shadow(0 0 14px rgba(180, 100, 255, 0.6));
+            animation: floatPulse 1.8s ease-in-out infinite;
         }
 
         @keyframes float {
