@@ -11,11 +11,11 @@ to do!
 
 - [x] finish and add animations
 
-- [ ] add a theme
+- [ ] add a theme (what did i even mean by this?? what)
 
-- [ ] implement music
+- [ ] implement music (how do we do this???)
 
-- [ ] custom levels
+- [?] custom levels (it's currently a separate file and is not fully implemented within the main html)
 
 - [ ] add the death animation + spraying particle effect upon death
 
@@ -27,7 +27,7 @@ to do!
 
 - [x] chrome extension packaging
 
-- [ ] mobile
+- [?] mobile
 
 ---
 

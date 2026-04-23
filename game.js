@@ -1,3 +1,4 @@
+// WHERE CAN I BUY AN EVIL HOUSE IM FUMING
 const gameContainer = document.getElementById("gameContainer");
 const player = document.getElementById("player");
 const playerShadow = document.getElementById("playerShadow");
