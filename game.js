@@ -193,6 +193,11 @@ function findSpikeAnchorY(spikeX) {
     return anchorY;
 }
 
+// stabbing myself 50 times btw
+// im such a chud
+// im such a fat fucking chud
+// i am a piece of shit
+// Guys github autofill is so fucked I am NOT typing this shit
 function loadLevel(levelNum) {
     currentLevel = levelNum;
     uiLevel.textContent = String(currentLevel);
