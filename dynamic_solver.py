@@ -58,6 +58,12 @@ ACTIONS: Tuple[Action, ...] = (
     Action(True, False, True, "LJ"),
     Action(False, True, True, "RJ"),
 )
+ACTION_IDLE = ACTIONS[0]
+ACTION_LEFT = ACTIONS[1]
+ACTION_RIGHT = ACTIONS[2]
+ACTION_JUMP = ACTIONS[3]
+ACTION_LEFT_JUMP = ACTIONS[4]
+ACTION_RIGHT_JUMP = ACTIONS[5]
 
 
 @dataclass
@@ -272,11 +278,11 @@ def choose_action(state: State, level: Level, visited: Dict[Tuple[int, int], int
         next_beam.sort(key=lambda item: item[0], reverse=True)
         beam = next_beam[:beam_width]
         if not beam:
-            return ACTIONS[0]
+            return ACTION_IDLE
         if beam[0][1].won:
             break
 
-    return beam[0][2] if beam[0][2] is not None else ACTIONS[0]
+    return beam[0][2] if beam[0][2] is not None else ACTION_IDLE
 
 
 def distance_to_goal(state: State, level: Level) -> float:
@@ -300,16 +306,16 @@ def fallback_action(state: State, level: Level) -> Action:
     jump = can_jump and goal_above
 
     if move_left and jump:
-        return ACTIONS[4]
+        return ACTION_LEFT_JUMP
     if move_right and jump:
-        return ACTIONS[5]
+        return ACTION_RIGHT_JUMP
     if move_left:
-        return ACTIONS[1]
+        return ACTION_LEFT
     if move_right:
-        return ACTIONS[2]
+        return ACTION_RIGHT
     if jump:
-        return ACTIONS[3]
-    return ACTIONS[0]
+        return ACTION_JUMP
+    return ACTION_IDLE
 
 
 def state_key(state: State) -> Tuple[int, int, int, int, int, int, int]:
