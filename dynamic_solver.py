@@ -366,9 +366,9 @@ def astar_next_action(start: State, level: Level, max_expansions: int = 6000) ->
 
 
 def normalize_level(raw: Dict[str, object]) -> Level:
-    platforms = [dict(item) for item in raw.get("platforms", [])]
-    enemies = [dict(item) for item in raw.get("enemies", [])]
-    spikes = [dict(item) for item in raw.get("spikes", [])]
+    platforms = list(raw.get("platforms", []))
+    enemies = list(raw.get("enemies", []))
+    spikes = list(raw.get("spikes", []))
     return Level(
         platforms=platforms,
         enemies=enemies,
@@ -403,7 +403,9 @@ def load_levels_from_js(levels_path: Path) -> List[Level]:
 
 
 def solve_level(level: Level, start_x: float, start_y: float, max_frames: int, horizon: int, beam_width: int) -> Tuple[State, List[Action]]:
-    state = State(start_x, start_y, 0.0, 0.0, COYOTE_FRAMES if grounded_at(State(start_x, start_y, 0, 0, 0, 0, False, 0), level) else 0, 0, False, 0)
+    state = State(start_x, start_y, 0.0, 0.0, 0, 0, False, 0)
+    if grounded_at(state, level):
+        state.coyote = COYOTE_FRAMES
     if goal_hit(state, level):
         state.won = True
         return state, []
