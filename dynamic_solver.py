@@ -30,6 +30,16 @@ MOVE_SPEED = 5.0
 JUMP_CUTOFF_MULTIPLIER = 0.45
 COYOTE_FRAMES = 8
 JUMP_BUFFER_FRAMES = 8
+WIN_SCORE = 1_000_000.0
+DEAD_SCORE = -1_000_000.0
+BELOW_GOAL_PENALTY_MULTIPLIER = 2.5
+REVISIT_PENALTY_MULTIPLIER = 6.0
+BEAM_SEARCH_DECAY = 0.92
+FALLBACK_MOVE_THRESHOLD = 4.0
+FALLBACK_GOAL_ABOVE_PADDING = 20.0
+ASTAR_HEURISTIC_SCALE = 7.0
+DISTANCE_IMPROVEMENT_THRESHOLD = 2.0
+STALL_FRAMES_THRESHOLD = 120
 
 
 @dataclass(frozen=True)
@@ -229,9 +239,9 @@ def simulate_step(state: State, action: Action, level: Level) -> State:
 
 def score_state(state: State, level: Level, visited: Dict[Tuple[int, int], int]) -> float:
     if state.won:
-        return 1_000_000.0
+        return WIN_SCORE
     if state.dead:
-        return -1_000_000.0
+        return DEAD_SCORE
 
     goal_cx = level.goalX + level.goalW / 2.0
     goal_cy = level.goalY + level.goalH / 2.0
@@ -239,16 +249,16 @@ def score_state(state: State, level: Level, visited: Dict[Tuple[int, int], int])
     player_cy = state.y + PLAYER_H / 2.0
     dx = abs(goal_cx - player_cx)
     dy = abs(goal_cy - player_cy)
-    below_goal_penalty = max(0.0, player_cy - goal_cy) * 2.5
+    below_goal_penalty = max(0.0, player_cy - goal_cy) * BELOW_GOAL_PENALTY_MULTIPLIER
     dist = dx + dy + below_goal_penalty
     key = (int(state.x // 20), int(state.y // 20))
-    revisit_penalty = visited.get(key, 0) * 6.0
+    revisit_penalty = visited.get(key, 0) * REVISIT_PENALTY_MULTIPLIER
     return -dist - revisit_penalty - abs(state.vy) * 0.25
 
 
 def choose_action(state: State, level: Level, visited: Dict[Tuple[int, int], int], horizon: int, beam_width: int) -> Action:
     beam: List[Tuple[float, State, Action | None]] = [(0.0, state, None)]
-    decay = 0.92
+    decay = BEAM_SEARCH_DECAY
 
     for depth in range(horizon):
         next_beam: List[Tuple[float, State, Action | None]] = []
@@ -276,16 +286,16 @@ def distance_to_goal(state: State, level: Level) -> float:
     player_cy = state.y + PLAYER_H / 2.0
     dx = abs(goal_cx - player_cx)
     dy = abs(goal_cy - player_cy)
-    below_goal_penalty = max(0.0, player_cy - goal_cy) * 2.5
+    below_goal_penalty = max(0.0, player_cy - goal_cy) * BELOW_GOAL_PENALTY_MULTIPLIER
     return dx + dy + below_goal_penalty
 
 
 def fallback_action(state: State, level: Level) -> Action:
     goal_cx = level.goalX + level.goalW / 2.0
     player_cx = state.x + PLAYER_W / 2.0
-    move_right = goal_cx > player_cx + 4
-    move_left = goal_cx < player_cx - 4
-    goal_above = state.y > level.goalY - 20
+    move_right = goal_cx > player_cx + FALLBACK_MOVE_THRESHOLD
+    move_left = goal_cx < player_cx - FALLBACK_MOVE_THRESHOLD
+    goal_above = state.y > level.goalY - FALLBACK_GOAL_ABOVE_PADDING
     can_jump = state.coyote > 0
     jump = can_jump and goal_above
 
@@ -343,7 +353,7 @@ def astar_next_action(start: State, level: Level, max_expansions: int = 6000) ->
                 continue
             best_cost[key] = next_g
             counter += 1
-            h = distance_to_goal(next_state, level) / 7.0
+            h = distance_to_goal(next_state, level) / ASTAR_HEURISTIC_SCALE
             heapq.heappush(heap, (next_g + h, next_g, counter, next_state, lead_action))
 
     return None
@@ -402,13 +412,13 @@ def solve_level(level: Level, start_x: float, start_y: float, max_frames: int, h
         visited[key] = visited.get(key, 0) + 1
 
         dist = distance_to_goal(state, level)
-        if dist < best_distance - 2:
+        if dist < best_distance - DISTANCE_IMPROVEMENT_THRESHOLD:
             best_distance = dist
             stall_frames = 0
         else:
             stall_frames += 1
 
-        if stall_frames >= 120:
+        if stall_frames >= STALL_FRAMES_THRESHOLD:
             action = astar_next_action(state, level) or fallback_action(state, level)
         else:
             action = choose_action(state, level, visited, horizon=horizon, beam_width=beam_width)
