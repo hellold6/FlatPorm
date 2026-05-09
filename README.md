@@ -57,6 +57,21 @@ to do!
 
 just open the file in any modern browser and you're FLATPORMING.
 
+## python dynamic movement solver
+
+there is now a separate python file: `dynamic_solver.py`.
+
+it replans movement every frame (left/right/jump) and tries to beat a chosen level from any start position you provide.
+
+example:
+
+```bash
+python3 dynamic_solver.py --level 1 --start-x 50 --start-y 450 --compact
+```
+
+use `--levels-file` if your `levels.js` is in a different location.
+it exits with code `0` when the goal is reached, and `1` if the run fails or times out.
+
 ## warning D:
 Make sure you have the JS and HTML in the same folder, otherwise it gets kinda clueless and loses 90% of the game
 ### advice
